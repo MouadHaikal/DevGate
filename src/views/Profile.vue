@@ -5,15 +5,16 @@
       <CardProjectDetail :project="selectedProject" @close="selectedProject = null" />
     </div>
     <!-- Affichage des cartes de projet si aucun projet n'est sélectionné -->
-    <div v-else class="w-full mx-auto py-10 flex flex-col gap-8">
-      <CardProject
+    <div v-else class="w-full mx-auto py-10 flex flex-col items-center gap-8">
+    <CardProject
         v-for="(project, index) in projects"
         :key="index"
         :project="project"
         @select="selectProject"
-        class="w-full"
+        class="max-w-4xl w-full"
       />
     </div>
+
   </section>
 </template>
 
