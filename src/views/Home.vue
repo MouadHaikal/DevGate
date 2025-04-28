@@ -7,7 +7,7 @@
 
                 <br><br>
 
-                <div class="text-6xl mx-auto font-winky text-amber-100 max-w-[25ch]">" Honestly, I can't find a better quiz website out there. "</div> 
+                <div class="text-6xl mx-auto font-winky text-amber-100 max-w-[25ch]">" If you're serious about coding and connections, Devgate is where you need to be. "</div> 
 
                 <div class="flex justify-center items-center w-full mt-8">
                     <div class="shrink-0">
@@ -15,7 +15,7 @@
                     </div>
                     <div class="ms-4">
                         <div class="text-base font-semibold text-gray-300">Josh Graziano</div>
-                        <div class="text-xs text-gray-400">Nice guy</div>
+                        <div class="text-xs text-gray-400">Software Engineer</div>
                     </div>
                 </div>
             </div>
@@ -24,8 +24,8 @@
 
             <div class="flex flex-col justify-between gap-9 items-center">
                 <div class="text-xl max-w-[60ch]">
-                    Challenge yourself with <span class="font-bold text-violet-300">fun and engaging</span> quizzes across hundreds of topics
-                    or unleash your creativity by <span class="font-bold text-orange-200">building your own </span>quizzes!
+                    <span class="font-bold text-violet-300">Showcase your skills</span> with stunning project portfolios <br>
+                    or <span class="font-bold text-orange-200">connect and collaborate </span> with top developers from around the world!
                 </div>
 
                 <div class="flex justify-between items-center gap-12 mt-4">
@@ -95,13 +95,13 @@
 
                 <div class="w-full mx-auto mt-10 flex flex-col items-center gap-5 text-center">
                     <div class="fancy-title bg-gradient-to-r from-violet-400 to-purple-400">
-                        Quizzes For Days
+                        Insight Dashboard
                     </div>
 
                     <hr class="fancy-hr">
 
                     <div class="desc">
-                        Dive into our massive collection of brain-bending quizzes spanning every topic imaginable
+                        Track your profile visits, project stars, and network growth with real-time analytics.
                     </div>
                 </div>
             </div>
@@ -126,13 +126,13 @@
 
                 <div class="w-full mx-auto mt-10 flex flex-col items-center gap-5 text-center">
                     <div class="fancy-title bg-gradient-to-r from-teal-400 to-green-400">
-                        Puzzle Masters
+                        Mentorship Match
                     </div>
 
                     <hr class="fancy-hr">
 
                     <div class="desc">
-                        Challenge yourself with mind-twisting puzzles designed to test your logic and creativity
+                        Find seasoned mentors or guide newcomers, because great coders both learn and teach.
                     </div>
                 </div>
             </div>
@@ -158,13 +158,13 @@
 
                 <div class="w-full mx-auto mt-10 flex flex-col items-center gap-5 text-center">
                     <div class="fancy-title bg-gradient-to-r from-orange-400 to-amber-400">
-                        Streak Champion
+                        Team Builder
                     </div>
 
                     <hr class="fancy-hr">
 
                     <div class="desc">
-                        Compete daily, build your winning streak, and watch your name climb our leaderboards
+                        Form or join dev squads, assign tasks, and ship features together. Your next big idea starts here.
                     </div>
                 </div>
             </div>
@@ -178,7 +178,7 @@
             <div class="w-full flex justify-center gap-8 items-start pt-64">
                 <div class="w-[22rem] pt-10 select-none">
                     <div class="font-quizano font-bold text-[2rem] text-violet-400 mb-3">
-                        Quizano
+                        DevGate
                     </div>
 
                     <hr class="fancy-hr-l">
@@ -245,7 +245,7 @@
                     <hr class="fancy-hr-l">
 
                     <div class="my-3">
-                        contact@quizano.ma
+                        contact@devgate.ma
                     </div>
 
                     <hr class="fancy-hr-l">
@@ -263,13 +263,13 @@
                 <hr class="fancy-hr">
 
                 <div class="font-bold text-gray-200 mt-6">
-                    Copyright © 2025 Quizano. &nbsp;&nbsp;All Rights Reserved.
+                    Copyright © 2025 DevGate. &nbsp;&nbsp;All Rights Reserved.
                     <br>
                     <span class="font-normal text-gray-300">Privacy Policy &nbsp;&nbsp;| &nbsp;&nbsp;Terms of Use &nbsp;&nbsp;| &nbsp;&nbsp;Contact Us</span>
                 </div>
 
                 <div class="text-gray-400 text-xs mt-3">
-                    Quizano and the Quizano logo are trademarks of Quizano. Unauthorized use or reproduction of 
+                    DevGate and the DevGate logo are trademarks of DevGate. Unauthorized use or reproduction of 
                     <br>
                     our content, quizzes, or branding is prohibited without written permission.
                 </div>
