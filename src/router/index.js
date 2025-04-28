@@ -8,6 +8,10 @@ import Signup from "../views/Signup.vue"
 import Login from "../views/Login.vue"
 
 
+import CardProjectDetails from "../components/CardProjectDetails.vue";
+
+
+
 const routes = [
     {
         path: '/',
@@ -31,6 +35,11 @@ const routes = [
     },
     {
         path: '/login',
+        name: 'Login',
+        component: Login
+    },
+    {
+        path: '/CardProj',
         name: 'Login',
         component: Login
     },

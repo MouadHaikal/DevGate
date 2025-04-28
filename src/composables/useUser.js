@@ -1,7 +1,7 @@
 import { ref, readonly } from 'vue';
 import { auth } from './useFirestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import { getDoc, doc } from 'firebase/firestore';
+import { getDoc, doc , getDocs,collection } from 'firebase/firestore';
 import { db } from './useFirestore';
 
 const currentUser = ref(null);
@@ -42,4 +42,23 @@ export function useUser() {
         isAdmin: readonly(isAdmin),
         loading: readonly(loading)
     };
+}
+
+
+
+
+
+
+export async function fetchManualProjects(userId) {
+  const projectsRef = collection(db, `users/${userId}/projects`);
+  const snapshot = await getDocs(projectsRef);
+  return snapshot.docs.map(doc => {
+    const data = doc.data();
+    return {
+      ...data,
+      source: 'manual',
+      createdAt: data.createdAt?.toDate() || new Date(),
+      updatedAt: data.updatedAt?.toDate() || new Date(),
+    };
+  });
 }
