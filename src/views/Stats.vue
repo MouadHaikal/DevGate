@@ -1,6 +1,6 @@
 <template>
   <div class="github-stats-container">
-    <h2>GitHub Statistics</h2>
+    <h2>GitHub Statistics for {{ username }}</h2>
 
     <div v-if="loading" class="loading-container">
       <div class="loader"></div>
@@ -9,83 +9,25 @@
 
     <div v-else-if="error" class="error-message">
       {{ error }}
+      <button @click="retry" class="retry-button">Retry</button>
     </div>
 
     <div v-else>
-      <div class="contribution-summary">
-        <h3>{{ contributionData.total }} contributions in the last year</h3>
-      </div>
-
-      <!-- Contribution Activity Grid -->
-      <div class="contribution-grid">
-        <div class="grid-header">
-          <div class="weekday-labels">
-            <!-- Empty space for alignment -->
-            <div class="month-label-spacer"></div>
-            <div v-for="day in contributionData.activityGrid.weekdays" :key="day">{{ day }}</div>
-          </div>
-          <div class="month-labels">
-            <div v-for="month in contributionData.activityGrid.months" :key="month">{{ month }}</div>
-          </div>
+      <div class="user-profile">
+        <div class="user-avatar">
+          <img :src="stats.avatarUrl" alt="Profile Image" v-if="stats.avatarUrl" />
+          <div class="avatar-placeholder" v-else>{{ username.charAt(0).toUpperCase() }}</div>
         </div>
-
-        <div class="grid-body">
-          <div class="weekdays">
-            <div v-for="day in contributionData.activityGrid.weekdays" :key="day">{{ day }}</div>
+        <div class="user-info">
+          <h3>{{ stats.name || username }}</h3>
+          <p v-if="stats.bio">{{ stats.bio }}</p>
+          <div class="user-meta" v-if="stats.location">
+            <span><i class="fas fa-map-marker-alt"></i> {{ stats.location }}</span>
           </div>
-          <div class="grid-cells">
-            <div v-for="(row, rowIndex) in contributionData.activityGrid.data" :key="rowIndex" class="grid-row">
-              <div
-                v-for="(value, colIndex) in row"
-                :key="`${rowIndex}-${colIndex}`"
-                class="grid-cell"
-                :class="`activity-level-${value}`">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="contribution-legend">
-          <span>Less</span>
-          <div class="legend-cells">
-            <div class="grid-cell activity-level-0"></div>
-            <div class="grid-cell activity-level-1"></div>
-            <div class="grid-cell activity-level-2"></div>
-            <div class="grid-cell activity-level-3"></div>
-            <div class="grid-cell activity-level-4"></div>
-          </div>
-          <span>More</span>
         </div>
       </div>
 
-      <!-- Activity Chart -->
-      <div class="activity-chart">
-        <h3>Contribution Activity</h3>
-        <div class="chart-container">
-          <div class="chart-y-axis">
-            <div v-for="tick in activityChartYAxis" :key="tick">{{ tick }}</div>
-          </div>
-          <div class="chart-content">
-            <div class="chart-bars">
-              <div
-                v-for="(value, index) in contributionData.contributions"
-                :key="index"
-                class="chart-bar"
-                :style="{ height: `${Math.max(value / activityChartMax * 100, 5)}%` }">
-                <div class="bar-value">{{ value }}</div>
-              </div>
-            </div>
-            <div class="chart-x-axis">
-              <div
-                v-for="(month, index) in contributionData.months"
-                :key="index"
-                class="x-label">
-                {{ month }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       <div class="stats-grid">
         <div class="stat-card">
@@ -104,96 +46,289 @@
             <span v-for="(lang, index) in stats.topLanguages" :key="index" class="language-badge">
               {{ lang }}
             </span>
+            <span v-if="!stats.topLanguages || stats.topLanguages.length === 0" class="language-badge empty">
+              No languages detected
+            </span>
           </div>
         </div>
       </div>
 
-      <div v-if="projects.length > 0" class="projects-section">
+      <div class="activity-chart" v-if="!chartLoading && repoActivityByMonth.some(count => count > 0)">
+        <h3>Repository Activity</h3>
+        <div class="chart-container">
+          <div class="chart-content">
+            <div class="chart-bars">
+              <div v-for="(value, index) in repoActivityByMonth" :key="index" class="chart-bar"
+                   :style="{
+                     height: `${value > 0 ? Math.max((value / activityChartMax) * 100, 10) : 0}%`,
+                     opacity: value > 0 ? 1 : 0.2
+                   }"
+                   :title="`${months[index]}: ${value} activities`">
+                <div class="bar-value">{{ value }}</div>
+              </div>
+            </div>
+            <div class="chart-x-axis">
+              <div v-for="(month, index) in months" :key="index" class="x-label">
+                {{ month }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <GithubContributionGrid :username="username"></GithubContributionGrid>
+
+      <div v-if="projects.length" class="projects-section">
         <h3>Recent Projects</h3>
         <div class="projects-grid">
-          <div v-for="project in projects.slice(0, 3)" :key="project.title" class="project-card">
+          <div v-for="project in projectsToShow" :key="project.title" class="project-card">
             <h4>{{ project.title }}</h4>
             <p class="project-description">{{ project.description || 'No description provided' }}</p>
+            <div class="project-meta">
+              <span v-if="project.stack && project.stack.length" class="project-lang">
+                {{ project.stack[0] }}
+              </span>
+              <span class="project-date">
+                Updated {{ formatDate(project.updatedAt) }}
+              </span>
+            </div>
             <a :href="project.link" target="_blank" class="project-link">View on GitHub</a>
           </div>
         </div>
+        <div v-if="projects.length > projectsToShow.length" class="show-more">
+          <button @click="showMoreProjects" class="show-more-button">Show More Projects</button>
+        </div>
+      </div>
+
+      <div v-else-if="!loading" class="no-projects">
+        <p>No repositories found for this user.</p>
       </div>
     </div>
   </div>
 </template>
 
+
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { fetchGithubStats, fetchGithubProjects } from '../composables/useGithub.js';
-import { fetchContributionData } from '../composables/useGithub.js'; // Make sure to add this function
 
 const route = useRoute();
 
+import GithubContributionGrid from "../components/GithubContributionGrid.vue";
+
 // Get the username from route params
-const username = ref(route.params.username);
+const username = ref(route.params.username || '');
 
 const stats = ref({
   publicRepos: 0,
   followers: 0,
   topLanguages: [],
-  contributions: 'N/A',
-  activeHours: 'N/A'
+  avatarUrl: '',
+  bio: '',
+  location: '',
+  name: '',
 });
 
 const projects = ref([]);
-const contributionData = ref({
-  total: 0,
-  months: [],
-  contributions: [],
-  activityGrid: {
-    weekdays: ['Mon', 'Wed', 'Fri'],
-    months: [],
-    data: []
-  }
-});
+const projectsDisplayCount = ref(3);
 const loading = ref(true);
+const chartLoading = ref(true);
 const error = ref(null);
+const repoActivityByMonth = ref(Array(12).fill(0));
+const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-// Computed values for the activity chart
+
+
+// Compute projects to show based on current count
+const projectsToShow = computed(() => {
+  return projects.value.slice(0, projectsDisplayCount.value);
+});
+
+// Show more projects when button is clicked
+function showMoreProjects() {
+  projectsDisplayCount.value += 3;
+}
+
+// Format date to relative time (e.g. "2 months ago")
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = Math.abs(now - date);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 1) return 'today';
+  if (diffDays === 1) return 'yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+  return `${Math.floor(diffDays / 365)} years ago`;
+}
+
+// Compute max value for activity chart
 const activityChartMax = computed(() => {
-  const max = Math.max(...contributionData.value.contributions);
-  return max > 0 ? max : 10; // Default max value if all are 0
+  const max = Math.max(...repoActivityByMonth.value);
+  return max > 0 ? max : 1; // Avoid division by zero
 });
 
-const activityChartYAxis = computed(() => {
-  const max = activityChartMax.value;
-  const step = Math.ceil(max / 4);
-  return [max, Math.round(max * 3/4), Math.round(max / 2), Math.round(max / 4), 0];
-});
+// Process repository data to extract creation dates and activity by month
+function processRepositoryData(repos) {
+  const activityByMonth = Array(12).fill(0);
 
-onMounted(async () => {
+  repos.forEach(repo => {
+    const createdAt = new Date(repo.createdAt);
+    const updatedAt = new Date(repo.updatedAt);
+
+    // Count repo creation by month
+    activityByMonth[createdAt.getMonth()]++;
+
+    // If updated is different from created, count that too
+    if (updatedAt.getMonth() !== createdAt.getMonth() ||
+        updatedAt.getFullYear() !== createdAt.getFullYear()) {
+      activityByMonth[updatedAt.getMonth()]++;
+    }
+  });
+
+  repoActivityByMonth.value = activityByMonth;
+  chartLoading.value = false;
+}
+
+async function fetchGithubStats(username) {
   try {
-    loading.value = true;
-    error.value = null;
+    const response = await fetch(`https://api.github.com/users/${username}`);
 
-    // Fetch all data in parallel
-    const [statsData, projectsData, contributionsData] = await Promise.all([
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error(`User '${username}' not found on GitHub`);
+      }
+      if (response.status === 403) {
+        throw new Error('GitHub API rate limit exceeded. Please try again later.');
+      }
+      throw new Error(`GitHub API error: ${response.status}`);
+    }
+
+    const userData = await response.json();
+
+    // Extract top languages from repositories in a separate request
+    const reposResponse = await fetch(`https://api.github.com/users/${username}/repos?per_page=100`);
+    if (!reposResponse.ok) {
+      throw new Error('Failed to fetch repositories');
+    }
+
+    const reposData = await reposResponse.json();
+
+    // Calculate language usage
+    const languageCount = {};
+    reposData.forEach(repo => {
+      if (repo.language) {
+        languageCount[repo.language] = (languageCount[repo.language] || 0) + 1;
+      }
+    });
+
+    const topLanguages = Object.entries(languageCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([lang]) => lang);
+
+    return {
+      publicRepos: userData.public_repos,
+      followers: userData.followers,
+      topLanguages,
+      avatarUrl: userData.avatar_url,
+      bio: userData.bio,
+      location: userData.location,
+      blog: userData.blog,
+      company: userData.company,
+      name: userData.name,
+      login: userData.login,
+    };
+  } catch (error) {
+    console.error('Error fetching GitHub stats:', error);
+    throw error;
+  }
+}
+
+async function fetchGithubProjects(username) {
+  try {
+    const response = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=100`);
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error(`User '${username}' not found on GitHub`);
+      }
+      if (response.status === 403) {
+        throw new Error('GitHub API rate limit exceeded. Please try again later.');
+      }
+      throw new Error(`GitHub API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return data.map(repo => ({
+      title: repo.name,
+      description: repo.description || '',
+      link: repo.html_url,
+      imageUrl: repo.owner?.avatar_url || '',
+      stack: repo.language ? [repo.language] : [],
+      source: 'github',
+      createdAt: repo.created_at,
+      updatedAt: repo.updated_at,
+    }));
+  } catch (error) {
+    console.error('Error fetching GitHub projects:', error);
+    throw error;
+  }
+}
+
+// Retry loading data if there was an error
+function retry() {
+  loading.value = true;
+  error.value = null;
+  loadData();
+}
+
+// Load all GitHub data
+async function loadData() {
+  try {
+    if (!username.value) {
+      error.value = "No GitHub username provided";
+      loading.value = false;
+      return;
+    }
+
+    // Fetch GitHub stats and projects in parallel
+    const [statsData, projectsData] = await Promise.all([
       fetchGithubStats(username.value),
-      fetchGithubProjects(username.value),
-      fetchContributionData(username.value)
+      fetchGithubProjects(username.value)
     ]);
 
     stats.value = statsData;
-    projects.value = projectsData;
-    contributionData.value = contributionsData;
+    projects.value = projectsData.sort((a, b) =>
+      new Date(b.updatedAt) - new Date(a.updatedAt)
+    );
+
+    // Process repository data for visualization
+    processRepositoryData(projectsData);
+
+
+
   } catch (err) {
     console.error('Error fetching GitHub data:', err);
-    error.value = `Failed to load GitHub data: ${err.message}`;
+    error.value = err.message || 'Failed to load GitHub data';
   } finally {
     loading.value = false;
   }
+}
+
+onMounted(() => {
+  loadData();
 });
 </script>
 
 <style scoped>
 .github-stats-container {
   width: 100%;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
   background-color: #0d1117;
@@ -205,8 +340,10 @@ onMounted(async () => {
 .github-stats-container h2 {
   font-size: 1.5rem;
   font-weight: bold;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
   color: #f0f6fc;
+  border-bottom: 1px solid #30363d;
+  padding-bottom: 10px;
 }
 
 .github-stats-container h3 {
@@ -216,185 +353,69 @@ onMounted(async () => {
   color: #f0f6fc;
 }
 
-.contribution-summary {
-  margin-bottom: 20px;
-}
-
-.contribution-grid {
-  width: 100%;
-  margin-bottom: 30px;
-  background-color: #0d1117;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.grid-header {
-  display: flex;
-  flex-direction: column;
-  margin-left: 30px;
-}
-
-.month-labels {
-  display: flex;
-  justify-content: space-between;
-  padding: 0 5px;
-}
-
-.month-label-spacer {
-  width: 30px;
-}
-
-.weekday-labels {
-  display: none;
-}
-
-.grid-body {
-  display: flex;
-}
-
-.weekdays {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding-right: 8px;
-  font-size: 12px;
-  color: #8b949e;
-}
-
-.grid-cells {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.grid-row {
-  display: flex;
-  margin: 2px 0;
-}
-
-.grid-cell {
-  width: 15px;
-  height: 15px;
-  margin: 2px;
-  border-radius: 2px;
-}
-
-.activity-level-0 {
-  background-color: #161b22;
-}
-
-.activity-level-1 {
-  background-color: #0e4429;
-}
-
-.activity-level-2 {
-  background-color: #006d32;
-}
-
-.activity-level-3 {
-  background-color: #26a641;
-}
-
-.activity-level-4 {
-  background-color: #39d353;
-}
-
-.contribution-legend {
+.user-profile {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  margin-top: 10px;
-  font-size: 12px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background-color: #161b22;
+  border-radius: 8px;
+}
+
+.user-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-right: 16px;
+  flex-shrink: 0;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #1f6feb;
+  color: white;
+  font-size: 32px;
+  font-weight: bold;
+}
+
+.user-info h3 {
+  margin-bottom: 8px;
+}
+
+.user-meta {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
   color: #8b949e;
+  margin-top: 8px;
 }
 
-.legend-cells {
+.user-meta span {
+  margin-right: 16px;
   display: flex;
-  margin: 0 8px;
+  align-items: center;
 }
 
-.activity-chart {
-  margin-bottom: 30px;
-}
-
-.chart-container {
-  display: flex;
-  height: 200px;
-  margin-top: 20px;
-}
-
-.chart-y-axis {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  width: 40px;
-  padding-right: 10px;
-  text-align: right;
-  font-size: 12px;
-  color: #8b949e;
-}
-
-.chart-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.chart-bars {
-  flex: 1;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  border-bottom: 1px solid #30363d;
-}
-
-.chart-bar {
-  width: 24px;
-  background-color: #2ea043;
-  border-radius: 3px 3px 0 0;
-  position: relative;
-  transition: height 0.3s ease;
-}
-
-.bar-value {
-  position: absolute;
-  top: -20px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 10px;
-  color: #8b949e;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.chart-bar:hover .bar-value {
-  opacity: 1;
-}
-
-.chart-x-axis {
-  display: flex;
-  justify-content: space-between;
-  padding-top: 8px;
-  font-size: 12px;
-  color: #8b949e;
-}
-
-.x-label {
-  text-align: center;
-  width: 24px;
+.user-meta span i {
+  margin-right: 6px;
 }
 
 .stats-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 16px;
   margin-bottom: 30px;
-}
-
-@media (min-width: 640px) {
-  .stats-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
 }
 
 .stat-card {
@@ -406,6 +427,12 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .stat-card h3 {
@@ -416,9 +443,10 @@ onMounted(async () => {
 }
 
 .stat-value {
-  font-size: 1.5rem;
+  font-size: 2rem;
   font-weight: bold;
   color: #58a6ff;
+  margin: 0;
 }
 
 .language-badges {
@@ -437,27 +465,106 @@ onMounted(async () => {
   border-radius: 9999px;
 }
 
+.language-badge.empty {
+  background-color: #30363d;
+  color: #8b949e;
+}
+
+.activity-chart {
+  margin-bottom: 30px;
+  background-color: #161b22;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.chart-container {
+  height: 220px;
+  margin-top: 20px;
+}
+
+.chart-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-bars {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #30363d;
+}
+
+.chart-bar {
+  width: 7.5%;
+  max-width: 36px;
+  min-width: 16px;
+  background-color: #2ea043;
+  border-radius: 3px 3px 0 0;
+  position: relative;
+  transition: height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
+}
+
+.bar-value {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #8b949e;
+  opacity: 0;
+  transition: opacity 0.2s;
+  background-color: #0d1117;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.chart-bar:hover .bar-value {
+  opacity: 1;
+}
+
+.chart-x-axis {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 8px;
+  font-size: 12px;
+  color: #8b949e;
+}
+
+.x-label {
+  text-align: center;
+  width: 7.5%;
+  max-width: 36px;
+  min-width: 16px;
+}
+
 .projects-section {
-  margin-top: 32px;
+  background-color: #161b22;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 24px;
 }
 
 .projects-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 16px;
-}
-
-@media (min-width: 640px) {
-  .projects-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  margin-top: 16px;
 }
 
 .project-card {
-  background-color: #161b22;
+  background-color: #0d1117;
   padding: 16px;
   border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  border: 1px solid #30363d;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.project-card:hover {
+  transform: translateY(-2px);
+  border-color: #58a6ff;
 }
 
 .project-card h4 {
@@ -475,6 +582,22 @@ onMounted(async () => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  min-height: 2.5em;
+}
+
+.project-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #8b949e;
+  margin-bottom: 12px;
+}
+
+.project-lang {
+  display: inline-block;
+  padding: 2px 6px;
+  background-color: #30363d;
+  border-radius: 10px;
 }
 
 .project-link {
@@ -482,24 +605,28 @@ onMounted(async () => {
   font-size: 0.875rem;
   font-weight: 500;
   text-decoration: none;
+  display: inline-block;
+  margin-top: 8px;
+  transition: color 0.2s;
 }
 
 .project-link:hover {
+  color: #79c0ff;
   text-decoration: underline;
 }
 
 .loading-container {
   text-align: center;
-  padding: 32px 0;
+  padding: 60px 0;
 }
 
 .loader {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border: 4px solid #30363d;
   border-top: 4px solid #58a6ff;
   border-radius: 50%;
-  margin: 0 auto;
+  margin: 0 auto 16px;
   animation: spin 1s linear infinite;
 }
 
@@ -510,9 +637,155 @@ onMounted(async () => {
 
 .error-message {
   text-align: center;
-  padding: 16px;
-  background-color: #5a1d1d;
+  padding: 24px;
+  background-color: rgba(248, 81, 73, 0.15);
   color: #fa7970;
   border-radius: 8px;
+  border: 1px solid rgba(248, 81, 73, 0.4);
+  margin: 16px 0;
+}
+
+.retry-button {
+  background-color: #238636;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.retry-button:hover {
+  background-color: #2ea043;
+}
+
+.show-more {
+  text-align: center;
+  margin-top: 24px;
+}
+
+.show-more-button {
+  background-color: #30363d;
+  color: #c9d1d9;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.show-more-button:hover {
+  background-color: #3c444d;
+}
+
+.no-projects {
+  text-align: center;
+  padding: 24px;
+  color: #8b949e;
+}
+
+/* Animation for elements */
+@keyframes grow-bar {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.chart-bar {
+  animation: grow-bar 0.8s ease-out forwards;
+}
+
+/* Contribution Grid Styles */
+.contribution-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: #161b22;
+  border-radius: 8px;
+}
+
+.contribution-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 0.875rem;
+  color: #8b949e;
+}
+
+.legend-box {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+}
+
+.contribution-heatmap {
+  display: flex;
+  overflow-x: auto;
+  padding-bottom: 10px;
+}
+
+.heatmap-grid {
+  display: grid;
+  grid-template-rows: auto repeat(7, 12px);
+  grid-auto-flow: column;
+  gap: 3px;
+}
+
+.day-box {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  transition: transform 0.2s;
+}
+
+.day-box:hover {
+  transform: scale(1.2);
+}
+
+.day-label {
+  font-size: 10px;
+  color: #8b949e;
+  padding-right: 5px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .user-profile {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .user-avatar {
+    margin-right: 0;
+    margin-bottom: 16px;
+  }
+
+  .user-meta {
+    justify-content: center;
+  }
+
+  .projects-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .heatmap-grid {
+    gap: 2px;
+  }
+
+  .day-box {
+    width: 10px;
+    height: 10px;
+  }
 }
 </style>
