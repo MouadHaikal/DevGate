@@ -13,33 +13,28 @@
     </div>
 
     <div v-else>
-      <div class="user-profile">
-        <div class="user-avatar">
-          <img :src="stats.avatarUrl" alt="Profile Image" v-if="stats.avatarUrl" />
-          <div class="avatar-placeholder" v-else>{{ username.charAt(0).toUpperCase() }}</div>
-        </div>
-        <div class="user-info">
-          <h3>{{ stats.name || username }}</h3>
-          <p v-if="stats.bio">{{ stats.bio }}</p>
-          <div class="user-meta" v-if="stats.location">
-            <span><i class="fas fa-map-marker-alt"></i> {{ stats.location }}</span>
+      <div class="profile-stats-row">
+        <div class="user-profile">
+          <div class="user-avatar">
+            <img :src="stats.avatarUrl" alt="Profile Image" v-if="stats.avatarUrl" />
+            <div class="avatar-placeholder" v-else>{{ username.charAt(0).toUpperCase() }}</div>
+          </div>
+          <div class="user-info">
+            <h3>{{ stats.name || username }}</h3>
+            <p v-if="stats.bio">{{ stats.bio }}</p>
+            <div class="user-meta" v-if="stats.location">
+              <span><i class="fas fa-map-marker-alt"></i> {{ stats.location }}</span>
+            </div>
           </div>
         </div>
-      </div>
-
-
-
-      <div class="stats-grid">
         <div class="stat-card">
           <h3>Public Repositories</h3>
           <p class="stat-value">{{ stats.publicRepos }}</p>
         </div>
-
         <div class="stat-card">
           <h3>Followers</h3>
           <p class="stat-value">{{ stats.followers }}</p>
         </div>
-
         <div class="stat-card">
           <h3>Top Languages</h3>
           <div class="language-badges">
@@ -75,7 +70,6 @@
           </div>
         </div>
       </div>
-
 
       <GithubContributionGrid :username="username"></GithubContributionGrid>
 
@@ -117,8 +111,11 @@ const route = useRoute();
 
 import GithubContributionGrid from "../components/GithubContributionGrid.vue";
 
-// Get the username from route params
+
 const username = ref(route.params.username || '');
+
+
+const token = import.meta.env.VITE_GITHUB_TOKEN;
 
 const stats = ref({
   publicRepos: 0,
@@ -140,17 +137,16 @@ const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 
 
 
-// Compute projects to show based on current count
 const projectsToShow = computed(() => {
   return projects.value.slice(0, projectsDisplayCount.value);
 });
 
-// Show more projects when button is clicked
+
 function showMoreProjects() {
   projectsDisplayCount.value += 3;
 }
 
-// Format date to relative time (e.g. "2 months ago")
+
 function formatDate(dateString) {
   const date = new Date(dateString);
   const now = new Date();
@@ -195,7 +191,11 @@ function processRepositoryData(repos) {
 
 async function fetchGithubStats(username) {
   try {
-    const response = await fetch(`https://api.github.com/users/${username}`);
+    const response = await fetch(`https://api.github.com/users/${username}`, {
+      headers: {
+        'Authorization': `token ${token}` // Adding the token here
+      }
+    });
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -210,7 +210,12 @@ async function fetchGithubStats(username) {
     const userData = await response.json();
 
     // Extract top languages from repositories in a separate request
-    const reposResponse = await fetch(`https://api.github.com/users/${username}/repos?per_page=100`);
+    const reposResponse = await fetch(`https://api.github.com/users/${username}/repos?per_page=100`, {
+      headers: {
+        'Authorization': `token ${token}` // Adding the token here
+      }
+    });
+
     if (!reposResponse.ok) {
       throw new Error('Failed to fetch repositories');
     }
@@ -250,7 +255,11 @@ async function fetchGithubStats(username) {
 
 async function fetchGithubProjects(username) {
   try {
-    const response = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=100`);
+    const response = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=100`, {
+      headers: {
+        'Authorization': `token ${token}` // Adding the token here
+      }
+    });
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -310,8 +319,6 @@ async function loadData() {
     // Process repository data for visualization
     processRepositoryData(projectsData);
 
-
-
   } catch (err) {
     console.error('Error fetching GitHub data:', err);
     error.value = err.message || 'Failed to load GitHub data';
@@ -331,9 +338,12 @@ onMounted(() => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
-  background-color: #0d1117;
-  color: #c9d1d9;
-  border-radius: 8px;
+  background: transparent;
+  border: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  color: #f0f6fc;
+  border-radius: 18px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
@@ -341,8 +351,8 @@ onMounted(() => {
   font-size: 1.5rem;
   font-weight: bold;
   margin-bottom: 1.5rem;
-  color: #f0f6fc;
-  border-bottom: 1px solid #30363d;
+  color: #a996f7;
+  border-bottom: 1px solid rgba(126, 91, 239, 0.15);
   padding-bottom: 10px;
 }
 
@@ -350,16 +360,26 @@ onMounted(() => {
   font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 12px;
-  color: #f0f6fc;
+  color: #a996f7;
+}
+
+.profile-stats-row {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 32px;
+  width: 100%;
 }
 
 .user-profile {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
   display: flex;
   align-items: center;
-  margin-bottom: 24px;
-  padding: 16px;
-  background-color: #161b22;
-  border-radius: 8px;
+  justify-content: center;
+  text-align: center;
 }
 
 .user-avatar {
@@ -369,6 +389,8 @@ onMounted(() => {
   overflow: hidden;
   margin-right: 16px;
   flex-shrink: 0;
+  border: 2px solid #a996f7;
+  background: rgba(126, 91, 239, 0.08);
 }
 
 .user-avatar img {
@@ -383,7 +405,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #1f6feb;
+  background-color: #7e5bef;
   color: white;
   font-size: 32px;
   font-weight: bold;
@@ -391,13 +413,14 @@ onMounted(() => {
 
 .user-info h3 {
   margin-bottom: 8px;
+  color: #a996f7;
 }
 
 .user-meta {
   display: flex;
   align-items: center;
   font-size: 0.9rem;
-  color: #8b949e;
+  color: #b8a4e3;
   margin-top: 8px;
 }
 
@@ -411,41 +434,27 @@ onMounted(() => {
   margin-right: 6px;
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 16px;
-  margin-bottom: 30px;
-}
-
 .stat-card {
-  background-color: #161b22;
-  padding: 16px;
-  border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .stat-card h3 {
   font-size: 1.125rem;
   font-weight: 500;
-  color: #c9d1d9;
+  color: #a996f7;
   margin-bottom: 8px;
 }
 
 .stat-value {
   font-size: 2rem;
   font-weight: bold;
-  color: #58a6ff;
+  color: #7e5bef;
   margin: 0;
 }
 
@@ -460,8 +469,8 @@ onMounted(() => {
 .language-badge {
   padding: 4px 12px;
   font-size: 0.875rem;
-  background-color: #1f6feb;
-  color: #ffffff;
+  background-color: #a996f7;
+  color: #fff;
   border-radius: 9999px;
 }
 
@@ -472,9 +481,11 @@ onMounted(() => {
 
 .activity-chart {
   margin-bottom: 30px;
-  background-color: #161b22;
-  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(30, 27, 38, 0.85) 60%, rgba(126, 91, 239, 0.10) 100%);
+  border-radius: 14px;
   padding: 20px;
+  border: 1.5px solid rgba(126, 91, 239, 0.10);
+  box-shadow: 0 4px 16px 0 rgba(126, 91, 239, 0.08);
 }
 
 .chart-container {
@@ -501,7 +512,7 @@ onMounted(() => {
   width: 7.5%;
   max-width: 36px;
   min-width: 16px;
-  background-color: #2ea043;
+  background-color: #7e5bef;
   border-radius: 3px 3px 0 0;
   position: relative;
   transition: height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
@@ -541,10 +552,12 @@ onMounted(() => {
 }
 
 .projects-section {
-  background-color: #161b22;
-  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(30, 27, 38, 0.85) 60%, rgba(126, 91, 239, 0.10) 100%);
+  border-radius: 14px;
   padding: 20px;
   margin-top: 24px;
+  border: 1.5px solid rgba(126, 91, 239, 0.10);
+  box-shadow: 0 4px 16px 0 rgba(126, 91, 239, 0.08);
 }
 
 .projects-grid {
@@ -555,27 +568,27 @@ onMounted(() => {
 }
 
 .project-card {
-  background-color: #0d1117;
+  background: rgba(126, 91, 239, 0.08);
   padding: 16px;
-  border-radius: 8px;
-  border: 1px solid #30363d;
+  border-radius: 10px;
+  border: 1px solid rgba(126, 91, 239, 0.10);
   transition: transform 0.2s, border-color 0.2s;
 }
 
 .project-card:hover {
   transform: translateY(-2px);
-  border-color: #58a6ff;
+  border-color: #a996f7;
 }
 
 .project-card h4 {
   font-size: 1.125rem;
   font-weight: 600;
   margin-bottom: 8px;
-  color: #c9d1d9;
+  color: #a996f7;
 }
 
 .project-description {
-  color: #8b949e;
+  color: #b8a4e3;
   font-size: 0.875rem;
   margin-bottom: 12px;
   display: -webkit-box;
@@ -589,19 +602,20 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   font-size: 0.75rem;
-  color: #8b949e;
+  color: #b8a4e3;
   margin-bottom: 12px;
 }
 
 .project-lang {
   display: inline-block;
   padding: 2px 6px;
-  background-color: #30363d;
+  background-color: #a996f7;
+  color: #fff;
   border-radius: 10px;
 }
 
 .project-link {
-  color: #58a6ff;
+  color: #a996f7;
   font-size: 0.875rem;
   font-weight: 500;
   text-decoration: none;
@@ -611,20 +625,25 @@ onMounted(() => {
 }
 
 .project-link:hover {
-  color: #79c0ff;
+  color: #7e5bef;
   text-decoration: underline;
 }
 
-.loading-container {
-  text-align: center;
-  padding: 60px 0;
+.loading-container,
+.error-message {
+  background: linear-gradient(135deg, rgba(30, 27, 38, 0.85) 60%, rgba(126, 91, 239, 0.12) 100%);
+  border: 1.5px solid rgba(126, 91, 239, 0.15);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px 0 rgba(126, 91, 239, 0.15);
+  border-radius: 18px;
+  padding: 20px;
 }
 
 .loader {
   width: 40px;
   height: 40px;
-  border: 4px solid #30363d;
-  border-top: 4px solid #58a6ff;
+  border: 4px solid #a996f7;
+  border-top: 4px solid #7e5bef;
   border-radius: 50%;
   margin: 0 auto 16px;
   animation: spin 1s linear infinite;
@@ -635,18 +654,8 @@ onMounted(() => {
   100% { transform: rotate(360deg); }
 }
 
-.error-message {
-  text-align: center;
-  padding: 24px;
-  background-color: rgba(248, 81, 73, 0.15);
-  color: #fa7970;
-  border-radius: 8px;
-  border: 1px solid rgba(248, 81, 73, 0.4);
-  margin: 16px 0;
-}
-
 .retry-button {
-  background-color: #238636;
+  background-color: #7e5bef;
   color: white;
   border: none;
   border-radius: 6px;
@@ -659,7 +668,7 @@ onMounted(() => {
 }
 
 .retry-button:hover {
-  background-color: #2ea043;
+  background-color: #a996f7;
 }
 
 .show-more {
@@ -668,8 +677,8 @@ onMounted(() => {
 }
 
 .show-more-button {
-  background-color: #30363d;
-  color: #c9d1d9;
+  background-color: #a996f7;
+  color: #fff;
   border: none;
   border-radius: 6px;
   padding: 8px 16px;
@@ -680,13 +689,13 @@ onMounted(() => {
 }
 
 .show-more-button:hover {
-  background-color: #3c444d;
+  background-color: #7e5bef;
 }
 
 .no-projects {
   text-align: center;
   padding: 24px;
-  color: #8b949e;
+  color: #b8a4e3;
 }
 
 /* Animation for elements */
@@ -705,12 +714,19 @@ onMounted(() => {
 }
 
 /* Contribution Grid Styles */
+/* SUPPRIMER cette règle pour laisser le style du composant s'appliquer */
+/*
 .contribution-section {
   margin-bottom: 30px;
   padding: 20px;
-  background-color: #161b22;
-  border-radius: 8px;
+  background: transparent;
+  border: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  color: #f0f6fc;
+  border-radius: 16px;
 }
+*/
 
 .contribution-legend {
   display: flex;
@@ -718,13 +734,14 @@ onMounted(() => {
   gap: 4px;
   margin-bottom: 12px;
   font-size: 0.875rem;
-  color: #8b949e;
+  color: #b8a4e3;
 }
 
 .legend-box {
   width: 14px;
   height: 14px;
   border-radius: 2px;
+  background: #a996f7;
 }
 
 .contribution-heatmap {
@@ -745,47 +762,32 @@ onMounted(() => {
   height: 12px;
   border-radius: 2px;
   transition: transform 0.2s;
+  background: #7e5bef;
 }
 
 .day-box:hover {
   transform: scale(1.2);
+  background: #a996f7;
 }
 
 .day-label {
   font-size: 10px;
-  color: #8b949e;
+  color: #b8a4e3;
   padding-right: 5px;
   height: 20px;
   display: flex;
   align-items: center;
 }
 
-@media (max-width: 768px) {
-  .user-profile {
+@media (max-width: 900px) {
+  .profile-stats-row {
     flex-direction: column;
-    text-align: center;
+    align-items: center;
+    gap: 20px;
   }
-
-  .user-avatar {
-    margin-right: 0;
-    margin-bottom: 16px;
-  }
-
-  .user-meta {
-    justify-content: center;
-  }
-
-  .projects-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .heatmap-grid {
-    gap: 2px;
-  }
-
-  .day-box {
-    width: 10px;
-    height: 10px;
+  .user-profile, .stat-card {
+    width: 100%;
+    max-width: 100%;
   }
 }
 </style>

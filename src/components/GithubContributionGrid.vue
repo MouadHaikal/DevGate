@@ -5,16 +5,31 @@
     <div v-if="loading" class="loading">Loading...</div>
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else class="contribution-heatmap">
-      <div class="heatmap-grid">
-        <template v-for="(day, dayIndex) in dayLabels" :key="day">
+      <div
+        class="heatmap-grid"
+        :style="{
+          width: `${30 + structuredWeeks.length * 14 + (structuredWeeks.length - 1) * 4}px`,
+          gridTemplateColumns: `30px repeat(${structuredWeeks.length}, 14px)`
+        }"
+      >
+        <!-- Day labels (left column) -->
+        <template v-for="(day, index) in dayLabels" :key="index">
           <div class="day-label">{{ day }}</div>
-          <template v-for="(week, weekIndex) in contributions" :key="weekIndex">
+        </template>
+
+        <!-- Loop through each week (columns) -->
+        <template v-for="(week, weekIndex) in structuredWeeks" :key="weekIndex">
+          <!-- Each day in the week (rows) -->
+          <template v-for="(day, dayIndex) in week" :key="dayIndex">
             <div
-              v-if="week[dayIndex]"
               class="day-box"
-              :style="{ backgroundColor: week[dayIndex].color }"
-              :title="`${week[dayIndex].date}: ${week[dayIndex].contributionCount} contributions`"
-            ></div>
+              :title="`${day.date}: ${day.contributionCount} contributions`"
+              :style="{
+                backgroundColor: getContributionColor(day.contributionCount),
+                gridRow: dayIndex + 1,
+                gridColumn: weekIndex + 2
+              }"
+            />
           </template>
         </template>
       </div>
@@ -22,8 +37,9 @@
   </div>
 </template>
 
+
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 
 
 const props = defineProps(
@@ -38,7 +54,13 @@ const error = ref(null);
 const contributions = ref([]);
 const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const contributionColors = ['#161b22', '#0e4429', '#006d32', '#26a641', '#39d353'];
+const contributionColors = [
+  "#181622", // much darker for empty
+  "#a996f7", // low
+  "#7e5bef", // medium
+  "#6c47d9", // high
+  "#a084e8"  // very high
+];
 
 function getContributionColor(count) {
   if (count === 0) return contributionColors[0];
@@ -48,19 +70,72 @@ function getContributionColor(count) {
   return contributionColors[4];
 }
 
+const token = import.meta.env.VITE_GITHUB_TOKEN; // 🔐 Store this dans .env
+
+const structuredWeeks = ref([]); // use this for rendering
+
+const monthLabels = computed(() => []);
+
 async function fetchContributions() {
   try {
-    const res = await fetch(`https://github-contributions-api.deno.dev/${username}.json`);
-    if (!res.ok) throw new Error('API error');
-    const data = await res.json();
-    contributions.value = data.contributions || [];
+    const query = `
+      query {
+        user(login: "${username}") {
+          contributionsCollection {
+            contributionCalendar {
+              weeks {
+                contributionDays {
+                  date
+                  contributionCount
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const res = await fetch('https://api.github.com/graphql', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ query })
+    });
+
+    if (!res.ok) throw new Error('GitHub API error');
+    const json = await res.json();
+
+    const weeks = json.data.user.contributionsCollection.contributionCalendar.weeks;
+
+    // Find the week index where the 12th month ago starts
+    const now = new Date();
+    let monthsFound = 0;
+    let startIdx = weeks.length - 1;
+    let lastMonth = null;
+    for (let i = weeks.length - 1; i >= 0; i--) {
+      const week = weeks[i];
+      const firstDay = week.contributionDays[0];
+      if (!firstDay) continue;
+      const month = new Date(firstDay.date).getMonth();
+      if (month !== lastMonth) {
+        monthsFound++;
+        lastMonth = month;
+      }
+      if (monthsFound === 12) {
+        startIdx = i;
+        break;
+      }
+    }
+    structuredWeeks.value = weeks.slice(startIdx).map(week => week.contributionDays);
+
   } catch (err) {
     error.value = err.message || 'Failed to load contributions.';
   } finally {
     loading.value = false;
   }
 }
-
 
 onMounted(() => {
   console.log(username)
@@ -72,52 +147,79 @@ onMounted(() => {
 
 <style scoped>
 .contribution-section {
+  margin-bottom: 30px;
   padding: 20px;
-  background: #0d1117;
-  color: white;
-  border-radius: 8px;
-  max-width: 100%;
+  background: linear-gradient(135deg, rgba(30, 27, 38, 0.85) 60%, rgba(126, 91, 239, 0.10) 100%);
+  border-radius: 14px;
+  border: 1.5px solid rgba(126, 91, 239, 0.10);
+  box-shadow: 0 4px 16px 0 rgba(126, 91, 239, 0.08);
+  color: #f0f6fc;
 }
 
 .loading,
 .error {
-  color: #fff;
+  color: #f0f6fc;
   margin-top: 1rem;
+  background: linear-gradient(135deg, rgba(30, 27, 38, 0.85) 60%, rgba(126, 91, 239, 0.12) 100%);
+  border: 1.5px solid rgba(126, 91, 239, 0.15);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px 0 rgba(126, 91, 239, 0.15);
+  padding: 20px;
+  border-radius: 16px;
 }
 
 .contribution-heatmap {
   overflow-x: auto;
   margin-top: 10px;
+  display: block;
+  justify-content: unset;
 }
 
 .heatmap-grid {
+  max-width: 100%;
+  margin: 0;
   display: grid;
-  grid-template-columns: 30px repeat(53, 12px);
-  grid-template-rows: repeat(7, 12px);
-  gap: 3px;
-  padding: 10px;
+  grid-template-rows: repeat(7, 14px);
+  gap: 4px;
+  padding: 12px;
 }
 
 .day-label {
   grid-column: 1;
-  font-size: 10px;
-  color: #8b949e;
-  padding-right: 4px;
-  height: 12px;
-  line-height: 12px;
+  font-size: 12px;
+  color: #c9d1d9;
+  padding-right: 6px;
+  height: 14px;
+  line-height: 14px;
   display: flex;
   align-items: center;
 }
 
 .day-box {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-  transition: transform 0.2s;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: transparent;
 }
 
 .day-box:hover {
   transform: scale(1.2);
   z-index: 1;
+  box-shadow: 0 2px 8px 0 rgba(126, 91, 239, 0.18);
+}
+
+.months-row,
+.month-label,
+.month-label-spacer {
+  display: none;
+}
+
+.activity-chart {
+  margin-bottom: 30px;
+  background: linear-gradient(135deg, rgba(30, 27, 38, 0.85) 60%, rgba(126, 91, 239, 0.10) 100%);
+  border-radius: 14px;
+  padding: 20px;
+  border: 1.5px solid rgba(126, 91, 239, 0.10);
+  box-shadow: 0 4px 16px 0 rgba(126, 91, 239, 0.08);
 }
 </style>
