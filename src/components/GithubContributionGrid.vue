@@ -70,7 +70,7 @@ function getContributionColor(count) {
   return contributionColors[4];
 }
 
-const token = import.meta.env.VITE_GITHUB_TOKEN; // 🔐 Store this dans .env
+const token = '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';
 
 const structuredWeeks = ref([]); // use this for rendering
 

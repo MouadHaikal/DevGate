@@ -115,7 +115,7 @@ import GithubContributionGrid from "../components/GithubContributionGrid.vue";
 const username = ref(route.params.username || '');
 
 
-const token = import.meta.env.VITE_GITHUB_TOKEN;
+const token = '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';
 
 const stats = ref({
   publicRepos: 0,
