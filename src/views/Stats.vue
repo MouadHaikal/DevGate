@@ -48,6 +48,16 @@
         </div>
       </div>
 
+      <!-- Skills Section -->
+      <div class="skills-section" v-if="stats.skills && stats.skills.length > 0">
+        <h3>Skills</h3>
+        <div class="skills-grid">
+          <div v-for="skill in stats.skills" :key="skill" class="skill-badge">
+            {{ skill }}
+          </div>
+        </div>
+      </div>
+
       <div class="activity-chart" v-if="!chartLoading && repoActivityByMonth.some(count => count > 0)">
         <h3>Repository Activity</h3>
         <div class="chart-container">
@@ -106,6 +116,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../composables/useFirestore';
 
 const route = useRoute();
 
@@ -115,7 +127,7 @@ import GithubContributionGrid from "../components/GithubContributionGrid.vue";
 const username = ref(route.params.username || '');
 
 
-const token = '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';
+const token = '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';
 
 const stats = ref({
   publicRepos: 0,
@@ -125,6 +137,7 @@ const stats = ref({
   bio: '',
   location: '',
   name: '',
+  skills: []
 });
 
 const projects = ref([]);
@@ -189,11 +202,32 @@ function processRepositoryData(repos) {
   chartLoading.value = false;
 }
 
+async function fetchUserSkills(username) {
+  try {
+    // Query the Users collection to find the user with matching GitHub username
+    const usersRef = collection(db, 'Users');
+    const q = query(usersRef, where('Github_username', '==', username));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data();
+      console.log('Found user skills:', userData.skills); // Debug log
+      return userData.skills || [];
+    }
+    console.log('No user found with GitHub username:', username); // Debug log
+    return [];
+  } catch (error) {
+    console.error('Error fetching user skills:', error);
+    return [];
+  }
+}
+
 async function fetchGithubStats(username) {
   try {
     const response = await fetch(`https://api.github.com/users/${username}`, {
       headers: {
-        'Authorization': `token ${token}` // Adding the token here
+        'Authorization': `token ${token}`
       }
     });
 
@@ -208,6 +242,7 @@ async function fetchGithubStats(username) {
     }
 
     const userData = await response.json();
+    const skills = await fetchUserSkills(username);
 
     // Extract top languages from repositories in a separate request
     const reposResponse = await fetch(`https://api.github.com/users/${username}/repos?per_page=100`, {
@@ -246,6 +281,7 @@ async function fetchGithubStats(username) {
       company: userData.company,
       name: userData.name,
       login: userData.login,
+      skills
     };
   } catch (error) {
     console.error('Error fetching GitHub stats:', error);
@@ -789,5 +825,41 @@ onMounted(() => {
     width: 100%;
     max-width: 100%;
   }
+}
+
+.skills-section {
+  background: rgba(24, 25, 38, 0.9);
+  border: 1.5px solid rgba(168, 85, 247, 0.2);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin: 2rem 0;
+  backdrop-filter: blur(20px);
+}
+
+.skills-section h3 {
+  color: #fff;
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.skills-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.skill-badge {
+  background: rgba(168, 85, 247, 0.2);
+  color: #e9d5ff;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.skill-badge:hover {
+  background: rgba(168, 85, 247, 0.3);
+  transform: translateY(-2px);
 }
 </style>

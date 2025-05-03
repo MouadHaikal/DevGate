@@ -23,7 +23,7 @@ export const registerUser = async ({ email, password, username }) => {
             username: username,
             Github_username: "",
             Devto_username: "",
-            projects: ""
+            projects: []
         });
 
         return firebaseUser;
@@ -56,29 +56,16 @@ export const signInWithGoogle = async () => {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
 
-        // Vérifier d'abord si l'utilisateur existe déjà dans Firestore
+        // Check if user document exists
         const userDocRef = doc(db, "Users", user.uid);
         const userDoc = await getDoc(userDocRef);
 
-        if (userDoc.exists()) {
-            // L'utilisateur existe, mettre à jour seulement les champs email et username si nécessaire
-            const userData = userDoc.data();
-            const updateData = {};
-
-            // Ne mettre à jour que si les valeurs sont différentes ou manquantes
-            if (userData.email !== user.email) updateData.email = user.email;
-            if (!userData.username && user.displayName) updateData.username = user.displayName;
-
-            // S'il y a des champs à mettre à jour
-            if (Object.keys(updateData).length > 0) {
-                await updateDoc(userDocRef, updateData);
-            }
-        } else {
-            // Nouvel utilisateur, créer un nouveau document
+        // Only create document if it doesn't exist
+        if (!userDoc.exists()) {
             await setDoc(userDocRef, {
                 admin: false,
                 email: user.email,
-                username: user.displayName || user.email.split('@')[0],
+                username: user.displayName,
                 Github_username: "",
                 Devto_username: "",
                 projects: []
@@ -88,7 +75,7 @@ export const signInWithGoogle = async () => {
         return { user, error: null };
     } catch (error) {
         console.error("Google Auth Error:", error);
-
+        
         // Handle specific error cases
         if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
             return { user: null, error: { message: "Sign in was cancelled. Please try again." } };

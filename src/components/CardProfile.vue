@@ -32,6 +32,7 @@
           </div>
 
           <button
+            v-if="isCurrentUser"
             @click="toggleEditMode"
             class="w-9 h-9 flex items-center justify-center bg-gradient-to-tr from-pink-500 to-violet-500 hover:from-pink-600 hover:to-violet-600 text-white rounded-full transition"
             title="Edit Profile"
@@ -142,6 +143,10 @@
             <div class="text-lg font-bold text-orange-400">{{ devgateCount }}</div>
             <div class="text-xs text-gray-400">DevGate</div>
           </div>
+          <div>
+            <div class="text-lg font-bold text-pink-400">{{ profile.skills.length }}</div>
+            <div class="text-xs text-gray-400">Skills</div>
+          </div>
         </div>
 
         <!-- GitHub Stats Button -->
@@ -172,6 +177,147 @@
             </div>
           </div>
         </div>
+
+        <!-- Skills Section -->
+        <div class="mt-6">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-lg font-semibold text-gray-100">Skills</h3>
+            <button
+              v-if="isCurrentUser"
+              @click="toggleSkillsEdit"
+              class="w-8 h-8 flex items-center justify-center bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 rounded-full transition"
+              title="Edit Skills"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z" />
+              </svg>
+            </button>
+          </div>
+          <div class="flex flex-wrap gap-2 mb-3">
+            <div
+              v-for="skill in profile.skills"
+              :key="skill"
+              class="px-3 py-1 bg-violet-500/20 text-violet-300 rounded-full text-sm flex items-center gap-1"
+            >
+              {{ skill }}
+              <button
+                v-if="isEditingSkills"
+                @click="removeSkill(skill)"
+                class="text-violet-400 hover:text-violet-300"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+          
+          <!-- Add Skill Form -->
+          <div v-if="isEditingSkills" class="flex gap-2">
+            <input
+              type="text"
+              v-model="newSkill"
+              @keyup.enter="addSkill"
+              placeholder="Add a new skill"
+              class="flex-1 p-2 bg-gray-800 border border-gray-600 text-gray-300 rounded text-sm"
+            />
+            <button
+              @click="addSkill"
+              class="px-3 py-2 bg-violet-500 hover:bg-violet-600 text-white rounded"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+
+        <!-- Goals Section -->
+        <div class="mt-6">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-lg font-semibold text-gray-100">Goals</h3>
+            <button
+              v-if="isCurrentUser"
+              @click="toggleGoalsEdit"
+              class="w-8 h-8 flex items-center justify-center bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 rounded-full transition"
+              title="Edit Goals"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z" />
+              </svg>
+            </button>
+          </div>
+          <div v-if="profile.goals && profile.goals.length > 0" class="space-y-2 goals-container">
+            <transition-group name="goal-list">
+              <div
+                v-for="goal in profile.goals"
+                :key="goal"
+                class="goal-item flex items-center gap-2 p-2 bg-gray-800/50 rounded-lg hover:bg-gray-800/70 transition"
+              >
+                <input
+                  type="checkbox"
+                  :id="'goal-' + goal"
+                  :checked="false"
+                  @change="completeGoal(goal)"
+                  class="w-4 h-4 text-violet-500 bg-gray-700 border-gray-600 rounded focus:ring-violet-500"
+                />
+                <label :for="'goal-' + goal" class="text-gray-300 text-sm">{{ goal }}</label>
+              </div>
+            </transition-group>
+          </div>
+          <div v-else class="text-gray-400 text-sm italic">
+            No goals set yet
+          </div>
+          
+          <!-- Add Goal Form -->
+          <div v-if="isEditingGoals" class="flex gap-2 mt-3">
+            <input
+              type="text"
+              v-model="newGoal"
+              @keyup.enter="addGoal"
+              placeholder="Add a new goal"
+              class="flex-1 p-2 bg-gray-800 border border-gray-600 text-gray-300 rounded text-sm"
+            />
+            <button
+              @click="addGoal"
+              class="px-3 py-2 bg-violet-500 hover:bg-violet-600 text-white rounded"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div v-if="showConfirmation" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div class="bg-gray-800 p-6 rounded-xl max-w-sm w-full mx-4">
+        <h3 class="text-xl font-semibold text-gray-100 mb-3">Complete Goal?</h3>
+        <p class="text-gray-300 mb-4">Are you sure you want to mark "{{ goalToComplete }}" as completed?</p>
+        <div class="flex gap-3">
+          <button
+            @click="confirmComplete"
+            class="flex-1 py-2 bg-violet-500 hover:bg-violet-600 text-white rounded-lg transition"
+          >
+            Yes, complete it!
+          </button>
+          <button
+            @click="cancelComplete"
+            class="flex-1 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition"
+          >
+            No, keep it
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success Message -->
+    <div
+      v-if="showSuccess"
+      class="fixed bottom-4 right-4 bg-violet-500 text-white px-4 py-2 rounded-lg shadow-lg transition-all duration-500"
+      :class="{ 'opacity-0': !showSuccess }"
+    >
+      <div class="flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+        </svg>
+        <span>Goal completed! Great job!</span>
       </div>
     </div>
   </div>
@@ -185,6 +331,7 @@ import {fetchGithubProjects} from "../composables/useGithub.js";
 import {fetchDevtoProjects} from '../composables/useDevto.js';
 import {fetchManualProjects} from '../composables/useUser.js';
 import {useRouter} from 'vue-router';
+import {getAuth} from 'firebase/auth';
 
 const props = defineProps({
   userId: {type: String, required: true},
@@ -196,10 +343,16 @@ const props = defineProps({
 const emit = defineEmits(['profileUpdated', 'refreshProjects']);
 
 const router = useRouter();
+const auth = getAuth();
 const loading = ref(true);
 const saving = ref(false);
 const githubLoading = ref(false);
 const githubError = ref('');
+
+// Add computed property to check if current user is the profile owner
+const isCurrentUser = computed(() => {
+  return auth.currentUser && auth.currentUser.uid === props.userId;
+});
 
 const profile = ref({
   avatarUrl: '',
@@ -208,7 +361,9 @@ const profile = ref({
   username: '',
   bio: '',
   githubUsername: '',
-  devtoUsername: ''
+  devtoUsername: '',
+  skills: [],
+  goals: []
 });
 
 const githubCount = ref(0);
@@ -221,6 +376,15 @@ const editableGithub = ref('');
 const editableDevto = ref('');
 const isEditing = ref(false);
 const card = ref(null);
+const newSkill = ref('');
+const newGoal = ref('');
+
+const showConfirmation = ref(false);
+const goalToComplete = ref('');
+const showSuccess = ref(false);
+
+const isEditingSkills = ref(false);
+const isEditingGoals = ref(false);
 
 const handleMouseMove = (e) => {
   if (!card.value) return;
@@ -253,6 +417,8 @@ const fetchFirestoreProfile = async () => {
       profile.value.githubUsername = data.Github_username || props.githubUsername || '';
       profile.value.devtoUsername = data.Devto_username || props.devtoUsername || '';
       profile.value.bio = data.bio || '';
+      profile.value.skills = data.skills || [];
+      profile.value.goals = data.goals || [];
 
       editableName.value = profile.value.name;
       editableUsername.value = profile.value.username;
@@ -279,7 +445,7 @@ const fetchGithubProfile = async () => {
     // Use the GitHub API endpoints directly to avoid CORS issues
     const response = await fetch(`https://api.github.com/users/${profile.value.githubUsername}`, {
       headers: {
-        'Authorization': `token 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`
+        'Authorization': `token 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`
       }
     });
 
@@ -329,6 +495,7 @@ const fetchProjectCounts = async () => {
 };
 
 const toggleEditMode = () => {
+  if (!isCurrentUser.value) return;
   isEditing.value = !isEditing.value;
 
   if (isEditing.value) {
@@ -369,7 +536,7 @@ const saveChanges = async () => {
       try {
         const response = await fetch(`https://api.github.com/users/${editableGithub.value}`, {
           headers: {
-            'Authorization': `token ${import.meta.env.VITE_GITHUB_TOKEN}`
+            'Authorization': `token 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`
           }
         });
 
@@ -391,7 +558,9 @@ const saveChanges = async () => {
       username: editableUsername.value,
       Github_username: editableGithub.value,
       Devto_username: editableDevto.value,
-      bio: editableBio.value
+      bio: editableBio.value,
+      skills: profile.value.skills,
+      goals: profile.value.goals
     });
 
     const oldGithubUsername = profile.value.githubUsername;
@@ -417,7 +586,9 @@ const saveChanges = async () => {
       username: profile.value.username,
       githubUsername: profile.value.githubUsername,
       devtoUsername: profile.value.devtoUsername,
-      bio: profile.value.bio
+      bio: profile.value.bio,
+      skills: profile.value.skills,
+      goals: profile.value.goals
     });
 
     // Check if we need to refresh projects
@@ -455,6 +626,93 @@ const loadProfile = async () => {
   }
 };
 
+const addSkill = async () => {
+  if (newSkill.value.trim() && !profile.value.skills.includes(newSkill.value.trim())) {
+    profile.value.skills.push(newSkill.value.trim());
+    newSkill.value = '';
+    try {
+      const userDocRef = doc(db, 'Users', props.userId);
+      await updateDoc(userDocRef, {
+        skills: profile.value.skills
+      });
+    } catch (error) {
+      console.error('Error saving skill:', error);
+    }
+  }
+};
+
+const removeSkill = async (skill) => {
+  profile.value.skills = profile.value.skills.filter(s => s !== skill);
+  try {
+    const userDocRef = doc(db, 'Users', props.userId);
+    await updateDoc(userDocRef, {
+      skills: profile.value.skills
+    });
+  } catch (error) {
+    console.error('Error removing skill:', error);
+  }
+};
+
+const addGoal = async () => {
+  if (newGoal.value.trim() && !profile.value.goals.includes(newGoal.value.trim())) {
+    profile.value.goals.push(newGoal.value.trim());
+    newGoal.value = '';
+    try {
+      const userDocRef = doc(db, 'Users', props.userId);
+      await updateDoc(userDocRef, {
+        goals: profile.value.goals
+      });
+    } catch (error) {
+      console.error('Error saving goal:', error);
+    }
+  }
+};
+
+const completeGoal = async (goal) => {
+  goalToComplete.value = goal;
+  showConfirmation.value = true;
+};
+
+const confirmComplete = async () => {
+  showConfirmation.value = false;
+  // Add a small delay to show the animation
+  await new Promise(resolve => setTimeout(resolve, 100));
+  profile.value.goals = profile.value.goals.filter(g => g !== goalToComplete.value);
+  try {
+    const userDocRef = doc(db, 'Users', props.userId);
+    await updateDoc(userDocRef, {
+      goals: profile.value.goals
+    });
+    
+    // Show success message
+    showSuccess.value = true;
+    setTimeout(() => {
+      showSuccess.value = false;
+    }, 2000);
+  } catch (error) {
+    console.error('Error completing goal:', error);
+  }
+};
+
+const cancelComplete = () => {
+  showConfirmation.value = false;
+  // Reset the checkbox
+  const checkbox = document.getElementById(`goal-${goalToComplete.value}`);
+  if (checkbox) {
+    checkbox.checked = false;
+  }
+};
+
+const toggleSkillsEdit = () => {
+  if (!isCurrentUser.value) return;
+  isEditingSkills.value = !isEditingSkills.value;
+};
+
+const toggleGoalsEdit = () => {
+  if (!isCurrentUser.value) return;
+  isEditingGoals.value = !isEditingGoals.value;
+};
+
 // Update profile if external props change
 watch(() => [props.githubUsername, props.devtoUsername], ([newGithub, newDevto]) => {
   if (newGithub !== profile.value.githubUsername || newDevto !== profile.value.devtoUsername) {
@@ -488,6 +746,26 @@ onMounted(loadProfile);
   background: transparent;
   box-shadow: none;
   transition: transform 0.4s ease;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.profile-card::-webkit-scrollbar {
+  width: 6px;
+}
+
+.profile-card::-webkit-scrollbar-track {
+  background: rgba(168, 85, 247, 0.1);
+  border-radius: 3px;
+}
+
+.profile-card::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.3);
+  border-radius: 3px;
+}
+
+.profile-card::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.5);
 }
 
 .profile-card:hover {
@@ -500,6 +778,9 @@ onMounted(loadProfile);
   backdrop-filter: blur(20px);
   position: relative;
   transition: transform 0.4s ease, background 0.4s ease, border 0.4s ease;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .interactive-glass-card::before {
@@ -532,5 +813,51 @@ onMounted(loadProfile);
 
 .animate-pulse-subtle {
   animation: pulse-subtle 3s infinite ease-in-out;
+}
+
+.goal-list-enter-active,
+.goal-list-leave-active {
+  transition: all 0.5s ease;
+  position: absolute;
+  width: 100%;
+}
+
+.goal-list-enter-from {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+
+.goal-list-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+.goal-list-move {
+  transition: transform 0.5s ease;
+}
+
+.goal-item {
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.goal-item:hover {
+  transform: translateX(5px);
+}
+
+/* Add this to ensure proper animation container */
+.goals-container {
+  position: relative;
+  min-height: 40px;
+}
+
+/* Add fade-in animation for success message */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fixed {
+  animation: fadeIn 0.3s ease-out;
 }
 </style>
