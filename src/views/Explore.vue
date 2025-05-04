@@ -910,7 +910,7 @@
   // Add helper function for navigation to profile
   const navigateToProfile = (userId) => {
     if (!userId) return;
-    router.push(`/profile/${userId}`);
+    router.push(`/profile_other/${userId}`);
   };
   </script>
 
