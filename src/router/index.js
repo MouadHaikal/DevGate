@@ -10,6 +10,8 @@ import Login from "../views/Login.vue"
 // Protected routes
 import Profile from '../views/Profile.vue'
 import Stats from "../views/Stats.vue"
+import ProfileOther from "../views/ProfileOther.vue"
+
 
 const routes = [
     // Public routes
@@ -40,7 +42,7 @@ const routes = [
 
     // Protected routes
     {
-        path: '/profile',
+        path: '/profile/',
         name: 'Profile',
         component: Profile,
         meta: { requiresAuth: true }
@@ -49,6 +51,12 @@ const routes = [
         path: '/stats/:username',
         name: 'Stats',
         component: Stats,
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/profile_other/:userId',
+        name: 'ProfileOther',
+        component: ProfileOther,
         meta: { requiresAuth: true }
     }
 ]
