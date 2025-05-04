@@ -1,3 +1,4 @@
+
 <template>
   <div
     class="interactive-glass-card relative rounded-3xl overflow-hidden p-7 profile-card w-full"
@@ -325,7 +326,7 @@
 
 <script setup>
 import {ref, onMounted, watch, computed} from 'vue';
-import {doc, getDoc, updateDoc} from 'firebase/firestore';
+import {doc, getDoc, updateDoc, collection, addDoc, serverTimestamp} from 'firebase/firestore';
 import {db} from '../composables/useFirestore';
 import {fetchGithubProjects} from "../composables/useGithub.js";
 import {fetchDevtoProjects} from '../composables/useDevto.js';
@@ -386,8 +387,6 @@ const showSuccess = ref(false);
 const isEditingSkills = ref(false);
 const isEditingGoals = ref(false);
 
-const githubToken = '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';
-
 const handleMouseMove = (e) => {
   if (!card.value) return;
 
@@ -447,7 +446,7 @@ const fetchGithubProfile = async () => {
     // Use the GitHub API endpoints directly to avoid CORS issues
     const response = await fetch(`https://api.github.com/users/${profile.value.githubUsername}`, {
       headers: {
-        'Authorization': `Bearer ${githubToken}`
+        'Authorization': `token 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`
       }
     });
 
@@ -538,7 +537,7 @@ const saveChanges = async () => {
       try {
         const response = await fetch(`https://api.github.com/users/${editableGithub.value}`, {
           headers: {
-            'Authorization': `Bearer ${githubToken}`
+            'Authorization': `token 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`
           }
         });
 
@@ -630,12 +629,20 @@ const loadProfile = async () => {
 
 const addSkill = async () => {
   if (newSkill.value.trim() && !profile.value.skills.includes(newSkill.value.trim())) {
-    profile.value.skills.push(newSkill.value.trim());
+    const skill = newSkill.value.trim();
+    profile.value.skills.push(skill);
     newSkill.value = '';
     try {
       const userDocRef = doc(db, 'Users', props.userId);
       await updateDoc(userDocRef, {
         skills: profile.value.skills
+      });
+      // Ajout notification skill
+      await addDoc(collection(db, 'Notifications'), {
+        Created_At: serverTimestamp(),
+        type: 'skill-ajouté',
+        content: skill,
+        userId: props.userId
       });
     } catch (error) {
       console.error('Error saving skill:', error);
@@ -657,12 +664,20 @@ const removeSkill = async (skill) => {
 
 const addGoal = async () => {
   if (newGoal.value.trim() && !profile.value.goals.includes(newGoal.value.trim())) {
-    profile.value.goals.push(newGoal.value.trim());
+    const goal = newGoal.value.trim();
+    profile.value.goals.push(goal);
     newGoal.value = '';
     try {
       const userDocRef = doc(db, 'Users', props.userId);
       await updateDoc(userDocRef, {
         goals: profile.value.goals
+      });
+      // Ajout notification goal
+      await addDoc(collection(db, 'Notifications'), {
+        Created_At: serverTimestamp(),
+        type: 'goal-ajoutée',
+        content: goal,
+        userId: props.userId
       });
     } catch (error) {
       console.error('Error saving goal:', error);
@@ -679,13 +694,20 @@ const confirmComplete = async () => {
   showConfirmation.value = false;
   // Add a small delay to show the animation
   await new Promise(resolve => setTimeout(resolve, 100));
-  profile.value.goals = profile.value.goals.filter(g => g !== goalToComplete.value);
+  const completedGoal = goalToComplete.value;
+  profile.value.goals = profile.value.goals.filter(g => g !== completedGoal);
   try {
     const userDocRef = doc(db, 'Users', props.userId);
     await updateDoc(userDocRef, {
       goals: profile.value.goals
     });
-    
+    // Ajout notification goal achevée
+    await addDoc(collection(db, 'Notifications'), {
+      Created_At: serverTimestamp(),
+      type: 'goal-achevée',
+      content: completedGoal,
+      userId: props.userId
+    });
     // Show success message
     showSuccess.value = true;
     setTimeout(() => {
@@ -862,4 +884,5 @@ onMounted(loadProfile);
 .fixed {
   animation: fadeIn 0.3s ease-out;
 }
+
 </style>
