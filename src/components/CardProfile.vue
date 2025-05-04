@@ -1,3 +1,4 @@
+
 <template>
   <div
     class="interactive-glass-card relative rounded-3xl overflow-hidden p-7 profile-card w-full"
@@ -883,4 +884,5 @@ onMounted(loadProfile);
 .fixed {
   animation: fadeIn 0.3s ease-out;
 }
+
 </style>
