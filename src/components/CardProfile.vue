@@ -445,7 +445,7 @@ const fetchGithubProfile = async () => {
     // Use the GitHub API endpoints directly to avoid CORS issues
     const response = await fetch(`https://api.github.com/users/${profile.value.githubUsername}`, {
       headers: {
-        'Authorization': `token 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`
+        'Authorization': `token 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`
       }
     });
 
@@ -536,7 +536,7 @@ const saveChanges = async () => {
       try {
         const response = await fetch(`https://api.github.com/users/${editableGithub.value}`, {
           headers: {
-            'Authorization': `token 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`
+            'Authorization': `token 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`
           }
         });
 

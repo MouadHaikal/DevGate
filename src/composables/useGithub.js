@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 
 // Get GitHub token from environment variables
-const token = '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';
+const token = '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';
 
 // Simple cache to prevent redundant API calls
 const projectCache = {
