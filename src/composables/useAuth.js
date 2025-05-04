@@ -3,33 +3,29 @@ import {
     createUserWithEmailAndPassword,
     sendEmailVerification,
     GoogleAuthProvider,
-    signInWithPopup
+    signInWithPopup,
+    signOut,
+    onAuthStateChanged
 } from "firebase/auth";
-import { doc, setDoc,getDoc,updateDoc } from "firebase/firestore";
-import { signOut } from 'firebase/auth'
-
+import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
+import { onMounted, onUnmounted, ref } from "vue";
 
 export const registerUser = async ({ email, password, username }) => {
     try {
-        console.log("Registering with:", email, password, username);
-
-        if (!auth) throw new Error("Firebase Auth is not initialized correctly");
-
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const firebaseUser = userCredential.user;
-        console.log("User created successfully:", firebaseUser);
 
         await sendEmailVerification(firebaseUser);
 
         await setDoc(doc(db, "Users", firebaseUser.uid), {
             admin: false,
-            answered: [],
             email: email,
-            score: 0,
             username: username,
+            Github_username: "",
+            Devto_username: "",
+            projects: []
         });
 
-        console.log("User document saved for:", username);
         return firebaseUser;
 
     } catch (error) {
@@ -54,67 +50,85 @@ export const registerUser = async ({ email, password, username }) => {
 
 export const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
-    // Add basic scopes
     provider.addScope('email');
 
     try {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
 
-        // Store user info in Firestore with only essential fields
-        await setDoc(doc(db, "Users", user.uid), {
-            admin: false,
-            answered: [],
-            email: user.email,
-            score: 0,
-            username: user.displayName
-        }, { merge: true });
+        // Check if user document exists
+        const userDocRef = doc(db, "Users", user.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        // Only create document if it doesn't exist
+        if (!userDoc.exists()) {
+            await setDoc(userDocRef, {
+                admin: false,
+                email: user.email,
+                username: user.displayName,
+                Github_username: "",
+                Devto_username: "",
+                projects: []
+            });
+        }
 
         return { user, error: null };
     } catch (error) {
-        console.error("Erreur Google Auth:", error);
-        return { user: null, error };
+        console.error("Google Auth Error:", error);
+        
+        // Handle specific error cases
+        if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+            return { user: null, error: { message: "Sign in was cancelled. Please try again." } };
+        } else if (error.code === 'auth/network-request-failed') {
+            return { user: null, error: { message: "Network error. Please check your internet connection." } };
+        } else if (error.code === 'auth/popup-blocked') {
+            return { user: null, error: { message: "Popup was blocked. Please allow popups for this site." } };
+        } else {
+            return { user: null, error: { message: "An error occurred during sign in. Please try again." } };
+        }
     }
-}
+};
 
 export const logoutUser = async () => {
     try {
-        await signOut(auth)
-        console.log("User signed out")
+        await signOut(auth);
+        console.log("User signed out");
     } catch (error) {
-        console.error("Logout error:", error)
-        throw error
+        console.error("Logout error:", error);
+        throw error;
     }
+};
+
+
+export function useAuth() {
+    const currentUser = ref(null);
+    const isLoading = ref(true);
+    let unsubscribe = null;
+
+    onMounted(() => {
+        unsubscribe = onAuthStateChanged(auth, (user) => {
+            currentUser.value = user;
+            isLoading.value = false;
+        });
+    });
+
+    onUnmounted(() => {
+        if (unsubscribe) unsubscribe();
+    });
+
+    return {
+        currentUser,
+        isLoading,
+        isAuthenticated: () => currentUser.value !== null
+    };
 }
 
 
-
-export const update_after_quiz = async(user_id, quiz_id, score) => {
-  try {
-    // Reference to the user document
-    const userRef = doc(db, "Users", user_id);
-
-    // Get the current user data
-    const userDoc = await getDoc(userRef);
-
-    if (userDoc.exists()) {
-      const userData = userDoc.data();
-      const currentScore = userData.score || 0;
-      const newScore = currentScore + score;
-      const answeredQuizzes = userData.answered || [];
-      answeredQuizzes.push(quiz_id);
-      await updateDoc(userRef, {
-        score: newScore,
-        answered: answeredQuizzes
-      });
-
-     console.log("successful")
-    } else {
-      console.error("User document not found");
-
-    }
-  } catch (error) {
-    console.error("Error updating user after quiz:", error);
-
-  }
-};
+export function getCurrentUser() {
+    return new Promise((resolve) => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            unsubscribe();
+            resolve(user);
+        });
+    });
+}
