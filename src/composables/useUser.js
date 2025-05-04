@@ -44,21 +44,17 @@ export function useUser() {
     };
 }
 
-
-
-
-
-
 export async function fetchManualProjects(userId) {
-  const projectsRef = collection(db, `users/${userId}/projects`);
-  const snapshot = await getDocs(projectsRef);
-  return snapshot.docs.map(doc => {
-    const data = doc.data();
-    return {
-      ...data,
-      source: 'manual',
-      createdAt: data.createdAt?.toDate() || new Date(),
-      updatedAt: data.updatedAt?.toDate() || new Date(),
-    };
-  });
+  // Fetch the user document
+  const userDocRef = doc(db, 'Users', userId);
+  const snapshot = await getDoc(userDocRef);
+  if (!snapshot.exists()) return [];
+  const data = snapshot.data();
+  const projects = Array.isArray(data.projects) ? data.projects : [];
+  return projects.map(project => ({
+    ...project,
+    source: 'manual',
+    createdAt: project.createdAt?.toDate ? project.createdAt.toDate() : new Date(project.createdAt),
+    updatedAt: project.updatedAt?.toDate ? project.updatedAt.toDate() : new Date(project.updatedAt),
+  }));
 }

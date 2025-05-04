@@ -71,7 +71,7 @@ function getContributionColor(count) {
 }
 
 
-const token = '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';
+const githubToken = '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';
 
 
 const structuredWeeks = ref([]); // use this for rendering
@@ -100,7 +100,7 @@ async function fetchContributions() {
     const res = await fetch('https://api.github.com/graphql', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${githubToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ query })
