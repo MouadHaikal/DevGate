@@ -1,4 +1,3 @@
-
 <template>
   <div
     class="interactive-glass-card relative rounded-3xl overflow-hidden p-7 profile-card w-full"
@@ -161,6 +160,23 @@
           </button>
         </div>
 
+        <!-- Add Project Button -->
+        <div class="flex justify-center mt-4">
+          <button
+            v-if="isCurrentUser && !showAddProject"
+            @click="showAddProject = true"
+            class="bg-gradient-to-r from-teal-400 to-violet-500 hover:from-teal-500 hover:to-violet-600 text-white px-6 py-2 rounded-full font-semibold transition"
+          >
+            Add Project
+          </button>
+        </div>
+        <div v-if="showAddProject" class="mt-4">
+          <AddProject :userId="props.userId" @successfully-added="showAddProject = false" />
+          <div class="flex justify-center mt-2">
+            <button @click="showAddProject = false" class="bg-gray-600 hover:bg-gray-500 text-white px-4 py-1 rounded-full">Cancel</button>
+          </div>
+        </div>
+
         <!-- Connection Status -->
         <div class="mt-4 grid grid-cols-2 gap-4">
           <div class="text-center">
@@ -321,6 +337,18 @@
         <span>Goal completed! Great job!</span>
       </div>
     </div>
+
+    <!-- Add Project Modal -->
+    <teleport to="body">
+      <div v-if="showAddProject" class="modal-overlay" @click.self="showAddProject = false">
+        <div class="modal-content">
+          <AddProject :userId="props.userId" @successfully-added="showAddProject = false" />
+          <div class="flex justify-center mt-2">
+            <button @click="showAddProject = false" class="bg-gray-600 hover:bg-gray-500 text-white px-4 py-1 rounded-full">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </teleport>
   </div>
 </template>
 
@@ -333,6 +361,7 @@ import {fetchDevtoProjects} from '../composables/useDevto.js';
 import {fetchManualProjects} from '../composables/useUser.js';
 import {useRouter} from 'vue-router';
 import {getAuth} from 'firebase/auth';
+import AddProject from './AddProject.vue';
 
 const props = defineProps({
   userId: {type: String, required: true},
@@ -386,6 +415,10 @@ const showSuccess = ref(false);
 
 const isEditingSkills = ref(false);
 const isEditingGoals = ref(false);
+
+const showAddProject = ref(false);
+
+const githubToken = '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';
 
 const handleMouseMove = (e) => {
   if (!card.value) return;
@@ -446,7 +479,7 @@ const fetchGithubProfile = async () => {
     // Use the GitHub API endpoints directly to avoid CORS issues
     const response = await fetch(`https://api.github.com/users/${profile.value.githubUsername}`, {
       headers: {
-        'Authorization': `token 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`
+        'Authorization': `token ${githubToken}`
       }
     });
 
@@ -537,7 +570,7 @@ const saveChanges = async () => {
       try {
         const response = await fetch(`https://api.github.com/users/${editableGithub.value}`, {
           headers: {
-            'Authorization': `token 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`
+            'Authorization': `token ${githubToken}`
           }
         });
 
@@ -885,4 +918,29 @@ onMounted(loadProfile);
   animation: fadeIn 0.3s ease-out;
 }
 
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-content {
+  background: linear-gradient(135deg, #232046 60%, #181622 100%);
+  border-radius: 1.5rem;
+  box-shadow: 0 12px 48px 0 rgba(126, 91, 239, 0.25), 0 2px 8px 0 rgba(0,0,0,0.18);
+  border: 2px solid #a996f7;
+  padding: 3rem 3rem 2.5rem 3rem;
+  min-width: 600px;
+  max-width: 800px;
+  max-height: 92vh;
+  overflow-y: auto;
+  position: relative;
+  animation: modal-pop 0.25s cubic-bezier(.4,2,.6,1) both;
+}
 </style>
