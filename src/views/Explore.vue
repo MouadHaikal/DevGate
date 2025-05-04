@@ -483,6 +483,7 @@
                   <!-- View profile button -->
                   <button
                     class="fancy-button mt-2 w-full px-4 py-2 text-white font-semibold rounded-lg transition"
+                    @click.stop="navigateToProfile(user.id)"
                   >
                     View Profile ›
                   </button>
@@ -910,7 +911,7 @@
   // Add helper function for navigation to profile
   const navigateToProfile = (userId) => {
     if (!userId) return;
-    router.push(`/profile_other/${userId}`);
+    router.push({ name: 'ProfileOther', params: { userId } });
   };
   </script>
 
