@@ -127,7 +127,7 @@ import GithubContributionGrid from "../components/GithubContributionGrid.vue";
 const username = ref(route.params.username || '');
 
 
-const token = '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';
+const token = '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';
 
 const stats = ref({
   publicRepos: 0,
@@ -227,7 +227,7 @@ async function fetchGithubStats(username) {
   try {
     const response = await fetch(`https://api.github.com/users/${username}`, {
       headers: {
-        'Authorization': `token ${token}`
+        'Authorization': `Bearer ${token}`
       }
     });
 
@@ -247,7 +247,7 @@ async function fetchGithubStats(username) {
     // Extract top languages from repositories in a separate request
     const reposResponse = await fetch(`https://api.github.com/users/${username}/repos?per_page=100`, {
       headers: {
-        'Authorization': `token ${token}` // Adding the token here
+        'Authorization': `Bearer ${token}`
       }
     });
 
@@ -293,7 +293,7 @@ async function fetchGithubProjects(username) {
   try {
     const response = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=100`, {
       headers: {
-        'Authorization': `token ${token}` // Adding the token here
+        'Authorization': `Bearer ${token}`
       }
     });
 

@@ -583,97 +583,100 @@
   const loadProjects = async () => {
     isProjectsLoading.value = true;
     error.value = null;
+    projects.value = []; // Reset projects array
 
     try {
-      // 1. Fetch all users
+      // 1. Fetch all users from Firestore
       const usersRef = collection(db, 'Users');
       const usersSnapshot = await getDocs(usersRef);
-      const usersList = await Promise.all(usersSnapshot.docs.map(async doc => {
-        const userData = doc.data();
-        // Count Firestore projects
-        const firestoreCount = Array.isArray(userData.projects) ? userData.projects.length : 0;
-        // Count GitHub projects
-        let githubCount = 0;
+      
+      // 2. Process each user's projects
+      const allProjects = [];
+      
+      for (const userDoc of usersSnapshot.docs) {
+        const userData = userDoc.data();
+        const userId = userDoc.id;
+        const userName = userData.username || 'Anonymous';
+        
+        // Fetch GitHub projects
         if (userData.Github_username) {
           try {
             const githubProjects = await fetchGithubProjects(userData.Github_username);
-            githubCount = Array.isArray(githubProjects) ? githubProjects.length : 0;
-          } catch (e) {
-            console.warn('Error fetching GitHub projects for', userData.Github_username, e);
+            if (Array.isArray(githubProjects)) {
+              const formattedGithubProjects = githubProjects.map(project => ({
+                ...project,
+                userId,
+                userName,
+                source: 'github'
+              }));
+              allProjects.push(...formattedGithubProjects);
+            }
+          } catch (error) {
+            console.warn(`Error fetching GitHub projects for ${userData.Github_username}:`, error);
           }
         }
-        // Count Dev.to projects
-        let devtoCount = 0;
+        
+        // Fetch Dev.to projects
         if (userData.Devto_username) {
           try {
             const devtoProjects = await fetchDevtoProjects(userData.Devto_username);
-            devtoCount = Array.isArray(devtoProjects) ? devtoProjects.length : 0;
-          } catch (e) {
-            console.warn('Error fetching Dev.to projects for', userData.Devto_username, e);
+            if (Array.isArray(devtoProjects)) {
+              const formattedDevtoProjects = devtoProjects.map(project => ({
+                ...project,
+                userId,
+                userName,
+                source: 'devto'
+              }));
+              allProjects.push(...formattedDevtoProjects);
+            }
+          } catch (error) {
+            console.warn(`Error fetching Dev.to projects for ${userData.Devto_username}:`, error);
           }
         }
-        const totalProjects = firestoreCount + githubCount + devtoCount;
-        return {
-          id: doc.id,
-          username: userData.username || 'Anonymous',
-          joinDate: userData.createdAt?.toDate() || new Date(),
-          stats: {
-            projects: totalProjects,
-            skills: Array.isArray(userData.skills) ? userData.skills.length : 0,
-            objectives: Array.isArray(userData.goals) ? userData.goals.length : 0
-          },
-          topSkills: userData.skills || []
-        };
-      }));
-      console.log("Processed users list:", usersList);
-      users.value = usersList;
-      lastVisibleUser.value = usersSnapshot.docs[usersSnapshot.docs.length - 1];
-      hasMoreUsers.value = usersSnapshot.docs.length === 9;
-
-    } catch (err) {
-      console.error('Error loading users:', err);
-      error.value = 'Failed to load developers. Please try again later.';
+        
+        // Fetch manual projects from Firestore
+        if (userData.projects && Array.isArray(userData.projects)) {
+          const formattedManualProjects = userData.projects.map(project => ({
+            ...project,
+            userId,
+            userName,
+            source: 'manual'
+          }));
+          allProjects.push(...formattedManualProjects);
+        }
+      }
+      
+      // Sort projects by updated date (most recent first)
+      projects.value = allProjects.sort((a, b) => {
+        const dateA = new Date(a.updatedAt || a.createdAt);
+        const dateB = new Date(b.updatedAt || b.createdAt);
+        return dateB - dateA;
+      });
+      
+      // Update pagination state
+      hasMoreProjects.value = projects.value.length > 0;
+      lastVisibleProject.value = projects.value[projects.value.length - 1];
+      
+    } catch (error) {
+      console.error('Error loading projects:', error);
+      error.value = 'Failed to load projects. Please try again later.';
     } finally {
-      isUsersLoading.value = false;
+      isProjectsLoading.value = false;
     }
   };
   
-  const loadMoreUsers = async () => {
-    if (isLoadingMore.value || !hasMoreUsers.value || !lastVisibleUser.value) return;
+  // Add loadMoreProjects function for pagination
+  const loadMoreProjects = async () => {
+    if (isLoadingMore.value || !hasMoreProjects.value || !lastVisibleProject.value) return;
+    
     isLoadingMore.value = true;
     try {
-      const usersRef = collection(db, 'Users');
-      const usersQuery = query(
-        usersRef,
-        orderBy('username', 'asc'),
-        startAfter(lastVisibleUser.value),
-        limit(9)
-      );
-      const snapshot = await getDocs(usersQuery);
-      if (snapshot.empty) {
-        hasMoreUsers.value = false;
-      } else {
-        const newUsers = snapshot.docs.map(doc => {
-          const userData = doc.data();
-          return {
-            id: doc.id,
-            username: userData.username,
-            joinDate: userData.createdAt?.toDate() || new Date(),
-            stats: {
-              projects: userData.projectCount || 0,
-              skills: userData.skillsCount || 0,
-              objectives: userData.objectivesCount || 0
-            },
-            topSkills: userData.skills || []
-          };
-        });
-        users.value = [...users.value, ...newUsers];
-        lastVisibleUser.value = snapshot.docs[snapshot.docs.length - 1];
-        hasMoreUsers.value = snapshot.docs.length === 9;
-      }
-    } catch (err) {
-      console.error('Error loading more users:', err);
-      error.value = 'Failed to load more developers. Please try again later.';
+      // Implement pagination logic here if needed
+      // For now, we'll just set hasMoreProjects to false
+      hasMoreProjects.value = false;
+    } catch (error) {
+      console.error('Error loading more projects:', error);
+      error.value = 'Failed to load more projects. Please try again later.';
     } finally {
       isLoadingMore.value = false;
     }
@@ -739,6 +742,47 @@
     loadData();
   });
 
+  // Add this new function before loadUsers
+  const calculateTotalProjects = async (userData, userId) => {
+    let totalProjects = 0;
+
+    // Count manual projects from Firestore subcollection
+    try {
+      const manualProjects = await fetchManualProjects(userId);
+      if (Array.isArray(manualProjects)) {
+        totalProjects += manualProjects.length;
+      }
+    } catch (error) {
+      console.warn(`Error fetching manual projects for user ${userId}:`, error);
+    }
+
+    // Count GitHub projects
+    if (userData.Github_username) {
+      try {
+        const githubProjects = await fetchGithubProjects(userData.Github_username);
+        if (Array.isArray(githubProjects)) {
+          totalProjects += githubProjects.length;
+        }
+      } catch (error) {
+        console.warn(`Error fetching GitHub projects for ${userData.Github_username}:`, error);
+      }
+    }
+
+    // Count Dev.to projects
+    if (userData.Devto_username) {
+      try {
+        const devtoProjects = await fetchDevtoProjects(userData.Devto_username);
+        if (Array.isArray(devtoProjects)) {
+          totalProjects += devtoProjects.length;
+        }
+      } catch (error) {
+        console.warn(`Error fetching Dev.to projects for ${userData.Devto_username}:`, error);
+      }
+    }
+
+    return totalProjects;
+  };
+
   // Add this new function to load users data
   const loadUsers = async () => {
     isUsersLoading.value = true;
@@ -754,39 +798,65 @@
       );
       const snapshot = await getDocs(usersQuery);
       console.log("Users snapshot:", snapshot.size, "documents found");
+      
       if (snapshot.empty) {
         users.value = [];
         hasMoreUsers.value = false;
         console.log("No users found in Firestore");
       } else {
-        // For each user, fetch their manual project count from subcollection
+        // For each user, fetch all project sources and sum
         const usersList = await Promise.all(snapshot.docs.map(async doc => {
           const userData = doc.data();
-          // Fetch project count from subcollection
-          let projectCount = 0;
-          const subcollectionPath = `users/${doc.id}/projects`;
+          const userId = doc.id;
+          let totalProjects = 0;
+
+          // Manual projects from Firestore subcollection
           try {
-            const projectsRef = collection(db, subcollectionPath);
-            const projectsSnap = await getDocs(projectsRef);
-            projectCount = projectsSnap.size;
-            console.log(`[DEBUG] User: ${doc.id}, Subcollection: ${subcollectionPath}, Project count:`, projectCount);
-          } catch (e) {
-            console.warn(`[DEBUG] Error fetching projects for user ${doc.id} at ${subcollectionPath}:`, e);
+            const manualProjects = await fetchManualProjects(userId);
+            if (Array.isArray(manualProjects)) {
+              totalProjects += manualProjects.length;
+            }
+          } catch (error) {
+            console.warn(`Error fetching manual projects for user ${userId}:`, error);
           }
-          console.log("User data:", doc.id, userData, "Project count:", projectCount);
+
+          // GitHub projects
+          if (userData.Github_username) {
+            try {
+              const githubProjects = await fetchGithubProjects(userData.Github_username);
+              if (Array.isArray(githubProjects)) {
+                totalProjects += githubProjects.length;
+              }
+            } catch (error) {
+              console.warn(`Error fetching GitHub projects for ${userData.Github_username}:`, error);
+            }
+          }
+
+          // Dev.to projects
+          if (userData.Devto_username) {
+            try {
+              const devtoProjects = await fetchDevtoProjects(userData.Devto_username);
+              if (Array.isArray(devtoProjects)) {
+                totalProjects += devtoProjects.length;
+              }
+            } catch (error) {
+              console.warn(`Error fetching Dev.to projects for ${userData.Devto_username}:`, error);
+            }
+          }
+
           return {
-            id: doc.id,
+            id: userId,
             username: userData.username || 'Anonymous',
             joinDate: userData.createdAt?.toDate() || new Date(),
             stats: {
-              projects: projectCount,
+              projects: totalProjects,
               skills: Array.isArray(userData.skills) ? userData.skills.length : 0,
               objectives: Array.isArray(userData.goals) ? userData.goals.length : 0
             },
             topSkills: userData.skills || []
           };
         }));
-        console.log("[DEBUG] Final processed users list:", usersList);
+        
         users.value = usersList;
         lastVisibleUser.value = snapshot.docs[snapshot.docs.length - 1];
         hasMoreUsers.value = snapshot.docs.length === 9;
@@ -843,3 +913,70 @@
     router.push(`/profile/${userId}`);
   };
   </script>
+
+<style scoped>
+.fade-edge {
+  background: linear-gradient(to bottom, rgba(17, 24, 39, 0.5), rgba(17, 24, 39, 1));
+}
+
+.interactive-glass-card {
+  background: rgba(17, 24, 39, 0.5);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.interactive-glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.project-list-enter-active,
+.project-list-leave-active {
+  transition: all 0.5s ease;
+}
+
+.project-list-enter-from,
+.project-list-leave-to {
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+.update-list-enter-active,
+.update-list-leave-active {
+  transition: all 0.5s ease;
+}
+
+.update-list-enter-from,
+.update-list-leave-to {
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+.user-list-enter-active,
+.user-list-leave-active {
+  transition: all 0.5s ease;
+}
+
+.user-list-enter-from,
+.user-list-leave-to {
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+.fancy-hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(139, 92, 246, 0.5), transparent);
+}
+
+.fancy-button {
+  background: linear-gradient(to right, rgba(139, 92, 246, 0.8), rgba(124, 58, 237, 0.8));
+  transition: all 0.3s ease;
+}
+
+.fancy-button:hover {
+  background: linear-gradient(to right, rgba(139, 92, 246, 1), rgba(124, 58, 237, 1));
+  transform: translateY(-1px);
+}
+</style>

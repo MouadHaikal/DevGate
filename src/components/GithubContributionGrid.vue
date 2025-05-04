@@ -70,7 +70,7 @@ function getContributionColor(count) {
   return contributionColors[4];
 }
 
-const token = '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';
+const token = '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';
 
 const structuredWeeks = ref([]); // use this for rendering
 

@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 
 // Get GitHub token from environment variables
-const token = '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';
+const token = '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';
 
 // Simple cache to prevent redundant API calls
 const projectCache = {
@@ -39,7 +39,7 @@ export async function fetchContributionData(username) {
       `https://api.github.com/users/${username}/repos?per_page=100`,
       {
         headers: {
-          'Authorization': `token ${token}`
+          'Authorization': `Bearer ${token}`
         }
       }
     );
@@ -133,7 +133,7 @@ export async function fetchGithubProjects(username) {
   try {
     const response = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=100`, {
       headers: {
-        'Authorization': `token ${token}`
+        'Authorization': `Bearer ${token}`
       }
     });
 
@@ -157,7 +157,7 @@ export async function fetchGithubProjects(username) {
           // Get repository topics
           const topicsResponse = await fetch(`https://api.github.com/repos/${username}/${repo.name}/topics`, {
             headers: {
-              'Authorization': `token ${token}`,
+              'Authorization': `Bearer ${token}`,
               'Accept': 'application/vnd.github.mercy-preview+json' // Required for topics API
             }
           });

@@ -386,7 +386,7 @@ const showSuccess = ref(false);
 const isEditingSkills = ref(false);
 const isEditingGoals = ref(false);
 
-const githubToken = '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';
+const githubToken = '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';
 
 const handleMouseMove = (e) => {
   if (!card.value) return;
@@ -447,7 +447,7 @@ const fetchGithubProfile = async () => {
     // Use the GitHub API endpoints directly to avoid CORS issues
     const response = await fetch(`https://api.github.com/users/${profile.value.githubUsername}`, {
       headers: {
-        'Authorization': `token ${githubToken}`
+        'Authorization': `Bearer ${githubToken}`
       }
     });
 
@@ -538,7 +538,7 @@ const saveChanges = async () => {
       try {
         const response = await fetch(`https://api.github.com/users/${editableGithub.value}`, {
           headers: {
-            'Authorization': `token ${githubToken}`
+            'Authorization': `Bearer ${githubToken}`
           }
         });
 
