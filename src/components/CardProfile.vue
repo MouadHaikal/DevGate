@@ -1,3 +1,4 @@
+
 <template>
   <div
     class="interactive-glass-card relative rounded-3xl overflow-hidden p-7 profile-card w-full"
@@ -445,7 +446,7 @@ const fetchGithubProfile = async () => {
     // Use the GitHub API endpoints directly to avoid CORS issues
     const response = await fetch(`https://api.github.com/users/${profile.value.githubUsername}`, {
       headers: {
-        'Authorization': `token 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`
+        'Authorization': `token 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`
       }
     });
 
@@ -536,7 +537,7 @@ const saveChanges = async () => {
       try {
         const response = await fetch(`https://api.github.com/users/${editableGithub.value}`, {
           headers: {
-            'Authorization': `token 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`
+            'Authorization': `token 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`
           }
         });
 
@@ -883,4 +884,5 @@ onMounted(loadProfile);
 .fixed {
   animation: fadeIn 0.3s ease-out;
 }
+
 </style>
