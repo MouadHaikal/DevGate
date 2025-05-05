@@ -418,7 +418,7 @@ const isEditingGoals = ref(false);
 
 const showAddProject = ref(false);
 
-const githubToken = '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';
+const githubToken = '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';
 
 const handleMouseMove = (e) => {
   if (!card.value) return;
