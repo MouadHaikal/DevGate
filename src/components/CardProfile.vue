@@ -708,7 +708,7 @@ const addGoal = async () => {
       // Ajout notification goal
       await addDoc(collection(db, 'Notifications'), {
         Created_At: serverTimestamp(),
-        type: 'goal-ajoutée',
+        type: 'goal-ajouté',
         content: goal,
         userId: props.userId
       });
@@ -737,7 +737,7 @@ const confirmComplete = async () => {
     // Ajout notification goal achevée
     await addDoc(collection(db, 'Notifications'), {
       Created_At: serverTimestamp(),
-      type: 'goal-achevée',
+      type: 'goal-achevé',
       content: completedGoal,
       userId: props.userId
     });
