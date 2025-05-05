@@ -27,7 +27,7 @@
 
 <script setup>
 import { ref } from 'vue';
-import { doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, serverTimestamp, collection, addDoc } from 'firebase/firestore';
 import { db } from '../composables/useFirestore';
 
 const props = defineProps({
@@ -62,6 +62,15 @@ async function addProject() {
     await updateDoc(userDocRef, {
       projects: arrayUnion(project)
     });
+
+    // Add notification
+    await addDoc(collection(db, 'Notifications'), {
+      userId: props.userId,
+      created_At: serverTimestamp(),
+      type: 'created-project',
+      content: project.title
+    });
+
     success.value = true;
     emit('successfully-added');
     // Reset form

@@ -519,7 +519,7 @@
   import { fetchManualProjects } from '../composables/useUser';
   import { fetchGithubProjects } from '../composables/useGithub';
   import { fetchDevtoProjects } from '../composables/useDevto';
-  import { collection, query, getDocs, orderBy, limit, startAfter } from 'firebase/firestore';
+  import { collection, query, getDocs, orderBy, limit, startAfter, doc, getDoc } from 'firebase/firestore';
   import { db } from '../composables/useFirestore';
   
   // Router setup
@@ -557,6 +557,8 @@
   const projectCards = ref([]);
   const updateCards = ref([]);
   const userCards = ref([]);
+  
+  const notifications = ref([]);
   
   // Main data loading function
   const loadData = async () => {
@@ -657,7 +659,7 @@
       // Update pagination state
       hasMoreProjects.value = projects.value.length > 0;
       lastVisibleProject.value = projects.value[projects.value.length - 1];
-      
+
     } catch (error) {
       console.error('Error loading projects:', error);
       error.value = 'Failed to load projects. Please try again later.';
@@ -741,6 +743,7 @@
     }
     fetchAndLogAllUsers();
     loadData();
+    fetchAndLogNotifications();
   });
 
   // Add this new function before loadUsers
@@ -830,7 +833,7 @@
               }
             } catch (error) {
               console.warn(`Error fetching GitHub projects for ${userData.Github_username}:`, error);
-            }
+          }
           }
 
           // Dev.to projects
@@ -913,6 +916,106 @@
     if (!userId) return;
     router.push({ name: 'ProfileOther', params: { userId } });
   };
+
+  async function fetchAndLogNotifications() {
+    try {
+      const snapshot = await getDocs(collection(db, 'Notifications'));
+      const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log('All notifications:', notifs);
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    }
+  }
+
+  const loadUpdates = async () => {
+    isUpdatesLoading.value = true;
+    error.value = null;
+    try {
+      const notifQuery = query(
+        collection(db, 'Notifications'),
+        orderBy('Created_At', 'desc'),
+        limit(20)
+      );
+      const snapshot = await getDocs(notifQuery);
+      let notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      notifs = await attachUsernamesToUpdates(notifs); // Attach usernames
+      updates.value = notifs;
+      hasMoreUpdates.value = snapshot.docs.length === 20;
+      lastVisibleUpdate.value = snapshot.docs[snapshot.docs.length - 1] || null;
+      console.log('All notifications with usernames:', updates.value);
+    } catch (err) {
+      console.error('Error loading updates:', err);
+      error.value = 'Failed to load updates. Please try again later.';
+    } finally {
+      isUpdatesLoading.value = false;
+    }
+  };
+
+  const filteredUpdates = computed(() => updates.value);
+
+  function getUpdateAction(update) {
+    switch (update.type) {
+      case 'goal-achevé':
+        return 'achieved a goal';
+      case 'goal-ajouté':
+        return 'added a new goal';
+      case 'skill-ajouté':
+        return 'added a new skill';
+      case 'created-project':
+        return 'created a new project';
+      default:
+        return 'did something';
+    }
+  }
+
+  function formatTimestamp(ts) {
+    if (!ts) return '';
+    // Firestore Timestamp object
+    if (ts.toDate) {
+      return ts.toDate().toLocaleString();
+    }
+    // JS Date object or string
+    try {
+      return new Date(ts).toLocaleString();
+    } catch {
+      return '';
+    }
+  }
+
+  function getUpdateTypeBadgeClass(type) {
+    switch (type) {
+      case 'goal-achevé':
+        return 'bg-green-700 text-green-200';
+      case 'goal-ajouté':
+        return 'bg-blue-700 text-blue-200';
+      case 'skill-ajouté':
+        return 'bg-yellow-700 text-yellow-200';
+      case 'created-project':
+        return 'bg-violet-700 text-violet-200';
+      default:
+        return 'bg-gray-700 text-gray-200';
+    }
+  }
+
+  async function attachUsernamesToUpdates(updatesArr) {
+    const userCache = {};
+    for (const notif of updatesArr) {
+      if (notif.userId) {
+        if (!userCache[notif.userId]) {
+          try {
+            const userDoc = await getDoc(doc(db, 'Users', notif.userId));
+            userCache[notif.userId] = userDoc.exists() ? (userDoc.data().username || 'Unknown User') : 'Unknown User';
+          } catch {
+            userCache[notif.userId] = 'Unknown User';
+          }
+        }
+        notif.userName = userCache[notif.userId];
+      } else {
+        notif.userName = 'Unknown User';
+      }
+    }
+    return updatesArr;
+  }
   </script>
 
 <style scoped>

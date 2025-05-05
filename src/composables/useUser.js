@@ -53,7 +53,7 @@ export async function fetchManualProjects(userId) {
   const projects = Array.isArray(data.projects) ? data.projects : [];
   return projects.map(project => ({
     ...project,
-    source: 'manual',
+      source: 'manual',
     createdAt: project.createdAt?.toDate ? project.createdAt.toDate() : new Date(project.createdAt),
     updatedAt: project.updatedAt?.toDate ? project.updatedAt.toDate() : new Date(project.updatedAt),
   }));
