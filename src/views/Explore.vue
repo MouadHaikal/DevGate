@@ -103,11 +103,13 @@
         <!-- Projects Tab -->
         <div v-if="activeTab === 'projects'">
           <!-- Selected Project Detail View -->
-          <div v-if="selectedProject">
-            <CardProjectDetail
-              :project="selectedProject"
-              @close="selectedProject = null"
-            />
+          <div v-if="selectedProject" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+            <div class="relative w-full max-w-4xl">
+              <CardProjectDetail
+                :project="selectedProject"
+                @close="selectedProject = null"
+              />
+            </div>
           </div>
   
           <!-- Projects Grid -->
@@ -218,7 +220,7 @@
                     <!-- Voir plus button -->
                     <button
                       class="fancy-button mt-2 px-4 py-2 text-white font-semibold rounded-lg transition w-full"
-                      @click.stop="selectProject(project)"
+                      @click="selectProject(project)"
                     >
                       Voir Détail ›
                     </button>
@@ -1016,6 +1018,11 @@
     }
     return updatesArr;
   }
+
+  const selectProject = (project) => {
+    console.log('Selected project:', project);
+    selectedProject.value = project;
+  };
   </script>
 
 <style scoped>
